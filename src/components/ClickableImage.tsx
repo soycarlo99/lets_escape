@@ -10,6 +10,7 @@ interface ClickableArea {
   tooltip?: string; // Optional tooltip text to display
   fillColor?: string;
   strokeColor?: string;
+  detailImage?: string; // Path to detailed image when zoomed in
 }
 
 interface ClickableImageProps {
@@ -25,6 +26,9 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
   const [hoveredAreaId, setHoveredAreaId] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const [isZooming, setIsZooming] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null); // Add error state for debugging
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
@@ -62,6 +66,7 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
       tooltip: "Examine the mirror",
       fillColor: "rgba(124, 252, 0, 0.3)",
       strokeColor: "rgba(124, 252, 0, 0.6)",
+      detailImage: "/mirror.jpg", // Add path to detailed mirror image
     },
     // Add a door example
     {
@@ -137,13 +142,40 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
     };
   }, []);
 
+  // Function to handle going back from zoomed view
+  const handleBackClick = () => {
+    setIsZooming(false);
+    // Add a timeout to clear the image only after the fade out animation completes
+    setTimeout(() => {
+      setZoomedImage(null);
+      setImageError(null); // Reset any error state
+    }, 500); // This should match the transition duration in CSS
+  };
+
+  // Handle image loading error
+  const handleImageError = (
+    e: React.SyntheticEvent<HTMLImageElement, Event>,
+  ) => {
+    console.error("Error loading image:", e);
+    setImageError(`Failed to load image: ${zoomedImage}`);
+  };
+
   // Handle click on any clickable area
   const handleAreaClick = (area: ClickableArea) => {
+    console.log(`Clicked on area: ${area.id}`);
+
     switch (area.action) {
       case "mirror":
-        alert(
-          `You examine the ${area.name}. It reflects a distorted image of yourself.`,
-        );
+        if (area.detailImage) {
+          console.log(`Setting zoomed image to: ${area.detailImage}`);
+          setZoomedImage(area.detailImage);
+          setIsZooming(true);
+          setImageError(null); // Reset any previous errors
+        } else {
+          alert(
+            `You examine the ${area.name}. It reflects a distorted image of yourself.`,
+          );
+        }
         break;
       case "door":
         alert(`You try the ${area.name}. It appears to be locked.`);
@@ -156,9 +188,6 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
       default:
         alert(`You interact with the ${area.name}.`);
     }
-
-    // In a more advanced implementation, you could navigate to different views,
-    // show modals, add items to inventory, etc.
   };
 
   const imagePath = imageSrc || "/haunted-room.jpg";
@@ -252,10 +281,14 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
         src={imagePath}
         alt="Haunted Room"
         onMouseMove={handleMouseMove}
+        style={{
+          opacity: isZooming ? 0 : 1,
+          transition: "opacity 0.5s ease-in-out",
+        }}
       />
 
       {/* SVG overlay - positioned absolutely to match image exactly */}
-      {dimensions.width > 0 && (
+      {dimensions.width > 0 && !isZooming && (
         <svg
           width={dimensions.width}
           height={dimensions.height}
@@ -265,6 +298,8 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
             top: 0,
             left: 0,
             pointerEvents: "none",
+            opacity: isZooming ? 0 : 1,
+            transition: "opacity 0.5s ease-in-out",
           }}
           preserveAspectRatio="xMidYMid slice"
         >
@@ -321,10 +356,72 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
         </svg>
       )}
 
+      {/* SIMPLIFIED ZOOMED IMAGE VIEW */}
+      {isZooming && (
+        <div
+          className="zoomed-overlay"
+          style={{
+            position: "fixed", // Changed from absolute to fixed
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.9)",
+            zIndex: 9999,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: "20px",
+          }}
+        >
+          {/* Show error message if image fails to load */}
+          {imageError && (
+            <div style={{ color: "red", margin: "20px", fontSize: "18px" }}>
+              {imageError}
+            </div>
+          )}
+
+          {/* Display the image */}
+          {zoomedImage && (
+            <img
+              src={zoomedImage}
+              alt="Detailed view"
+              style={{
+                maxWidth: "90%",
+                maxHeight: "80vh",
+                border: "2px solid white",
+              }}
+              onError={handleImageError}
+            />
+          )}
+
+          {/* Back button */}
+          <button
+            onClick={handleBackClick}
+            style={{
+              marginTop: "20px",
+              background: "#333",
+              color: "white",
+              border: "1px solid white",
+              borderRadius: "4px",
+              padding: "10px 20px",
+              cursor: "pointer",
+              fontSize: "16px",
+            }}
+          >
+            Return to Room
+          </button>
+        </div>
+      )}
+
       {/* Debug overlay - show coordinates when moving over the image */}
       <div
         className="debug-coordinates"
-        style={{ display: "block", zIndex: 1000 }}
+        style={{
+          display: isZooming ? "none" : "block",
+          zIndex: 1000,
+        }}
       >
         Image coords: {mousePosition.x}, {mousePosition.y}
       </div>
