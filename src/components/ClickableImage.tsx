@@ -24,12 +24,31 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
   // Track which area is being hovered
   const [hoveredAreaId, setHoveredAreaId] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
   // Set the actual dimensions of your image here
   const originalWidth = 1920;
   const originalHeight = 1080;
+
+  // Handle mouse movement to track coordinates
+  const handleMouseMove = (e: React.MouseEvent<HTMLImageElement>) => {
+    if (!imgRef.current) return;
+
+    const rect = imgRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Convert screen coordinates to original image coordinates
+    const scaleX = originalWidth / rect.width;
+    const scaleY = originalHeight / rect.height;
+
+    const originalX = Math.round(x * scaleX);
+    const originalY = Math.round(y * scaleY);
+
+    setMousePosition({ x: originalX, y: originalY });
+  };
 
   // Define clickable areas (combine with any passed in props)
   const clickableAreas: ClickableArea[] = [
@@ -49,9 +68,9 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
       id: "door",
       name: "Door",
       shape: "rect",
-      coords: [800, 400, 120, 300], // Example coordinates - replace with actual door position
+      coords: [340, 800, 50, 50], // Example coordinates - replace with actual door position
       action: "door",
-      tooltip: "Try the door",
+      tooltip: "Look at the lock",
       fillColor: "rgba(255, 165, 0, 0.3)",
       strokeColor: "rgba(255, 165, 0, 0.6)",
     },
@@ -60,7 +79,7 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
       id: "desk",
       name: "Desk",
       shape: "rect",
-      coords: [400, 700, 200, 100], // Example coordinates - replace with actual desk position
+      coords: [624, 739, 300, 50], // Example coordinates - replace with actual desk position
       action: "desk",
       tooltip: "Look at the desk",
       fillColor: "rgba(0, 191, 255, 0.3)",
@@ -228,7 +247,12 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
   return (
     <div ref={containerRef} className="clickable-image-container">
       {/* Background image */}
-      <img ref={imgRef} src={imagePath} alt="Haunted Room" />
+      <img
+        ref={imgRef}
+        src={imagePath}
+        alt="Haunted Room"
+        onMouseMove={handleMouseMove}
+      />
 
       {/* SVG overlay - positioned absolutely to match image exactly */}
       {dimensions.width > 0 && (
@@ -297,9 +321,12 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
         </svg>
       )}
 
-      {/* Debug overlay - uncomment when mapping new areas */}
-      <div className="debug-coordinates" style={{ display: "block" }}>
-        Mouse position: <span id="mouse-coords">Move over image</span>
+      {/* Debug overlay - show coordinates when moving over the image */}
+      <div
+        className="debug-coordinates"
+        style={{ display: "block", zIndex: 1000 }}
+      >
+        Image coords: {mousePosition.x}, {mousePosition.y}
       </div>
     </div>
   );

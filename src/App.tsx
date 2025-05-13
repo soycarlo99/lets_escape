@@ -68,7 +68,6 @@ const App: React.FC = () => {
 
   // All your existing functions remain the same
   const updateEditorContent = () => {
-    // ... existing code ...
     if (currentPuzzle) {
       // Load the template for the current puzzle and language
       setCurrentCode(currentPuzzle.templates[currentLanguage]);
@@ -281,15 +280,17 @@ const App: React.FC = () => {
 
   // Render the app with view switching
   return (
-    <div className="app-container">
-      {/* <div className="header"> */}
-      {/*   <h1>Code Editor / Interactive Room</h1> */}
-      {/*   <button className="view-toggle-button" onClick={toggleView}> */}
-      {/*     {activeView === View.CodeEditor */}
-      {/*       ? "Switch to Interactive Room" */}
-      {/*       : "Switch to Code Editor"} */}
-      {/*   </button> */}
-      {/* </div> */}
+    <div
+      className={`app-container ${activeView === View.CodeEditor ? "code-editor-view" : ""}`}
+    >
+      <div className="header">
+        <h1>Code Editor / Interactive Room</h1>
+        <button className="view-toggle-button" onClick={toggleView}>
+          {activeView === View.CodeEditor
+            ? "Switch to Interactive Room"
+            : "Switch to Code Editor"}
+        </button>
+      </div>
 
       {activeView === View.CodeEditor ? (
         // Code Editor View
@@ -332,6 +333,8 @@ const App: React.FC = () => {
       ) : (
         // Interactive Room View
         <div className="interactive-room-container">
+          <h2>Escape Room Challenge</h2>
+          <p>Click on objects in the room to interact with them</p>
           <ClickableImage imageSrc={roomImagePath} />
         </div>
       )}
