@@ -1,5 +1,13 @@
 // src/types/clickableAreas.ts
 
+// src/types/clickableAreas.ts
+import { Language } from "../App";
+import {
+  PuzzleSpec,
+  generateTemplates,
+  generateFunctionNames,
+} from "../utils/templateGenerator";
+
 export interface ClickableArea {
   id: string;
   name: string;
@@ -14,8 +22,9 @@ export interface ClickableArea {
   description?: string; // Descriptive text
   expectedValue?: any; // Expected value from code solution
   puzzleCompleted?: boolean; // Track if puzzle is solved
-  codeTemplate?: string; // Template code for the puzzle
-  functionName?: string; // Name of the function to check
+  codeTemplates?: Record<string, string>; // Templates for different languages
+  functionNames?: Record<string, string>; // Function names for different languages
+  puzzleSpec?: PuzzleSpec; // Specification for the puzzle
 }
 
 // Group areas by zones for better organization
@@ -48,19 +57,17 @@ export const clickableAreas: ClickableArea[] = [
       "A heavy wooden door with an ornate brass lock. It appears to be locked from the other side. The keyhole is unusually large and seems to be in the shape of some kind of symbol. You need to find the correct 4-digit code to unlock it.",
     expectedValue: 1234, // The expected value that should be output by the code
     puzzleCompleted: false, // Initially not completed
-    codeTemplate: `/**
- * The door has a 4-digit code lock.
- * Implement this function to return the correct code to unlock the door.
- * 
- * @returns {number} The 4-digit unlock code
- */
-function unlockDoor() {
-  // Your code here
-  
-  // Hint: The code is a 4-digit number
-  return 0; // Replace with the correct code
-}`,
-    functionName: "unlockDoor",
+    puzzleSpec: {
+      name: "unlockDoor",
+      description:
+        "The door has a 4-digit code lock. Find the correct code to unlock it.",
+      returnType: "number",
+      returnDescription: "The 4-digit unlock code",
+      hints: ["The code is a 4-digit number", "Look around for clues"],
+    },
+    // Initialize with empty objects - we'll populate them in the component
+    codeTemplates: {},
+    functionNames: {},
   },
   // Add a desk item example
   {

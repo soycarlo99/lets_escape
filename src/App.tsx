@@ -60,6 +60,9 @@ const App: React.FC = () => {
   const editorRef = useRef<any>(null);
   const [showSidebar, setShowSidebar] = useState<boolean>(true);
 
+  // State to track the currently selected interactive area
+  const [selectedArea, setSelectedArea] = useState<ClickableArea | null>(null);
+
   // Add state to track solved puzzles
   const [solvedPuzzles, setSolvedPuzzles] = useState<Set<string>>(new Set());
 
@@ -286,6 +289,71 @@ const App: React.FC = () => {
     // For example, you could show a modal, play a sound, etc.
   };
 
+  // Handle checking puzzle solution from the editor
+  const handleCheckPuzzleSolution = (area: ClickableArea) => {
+    // Call the evaluation function in ClickableImage
+    try {
+      // Get the function name for the current language
+      const functionName = area.functionNames?.[currentLanguage];
+
+      if (!functionName) {
+        console.error(`No function name provided for ${currentLanguage}`);
+        alert(`Error: No function name defined for ${currentLanguage}`);
+        return;
+      }
+
+      if (!currentCode || currentCode.trim() === "") {
+        alert("Please write some code in the editor first.");
+        return;
+      }
+
+      // Create a function to evaluate the code
+      const evalFunc = new Function(`
+        ${currentCode}
+        
+        // Check if the function exists (handle different path notations like 'Class.method')
+        const parts = "${functionName}".split('.');
+        let func = window;
+        
+        for (const part of parts) {
+          if (func[part] === undefined) {
+            throw new Error("Function ${functionName} is not defined");
+          }
+          func = func[part];
+        }
+        
+        if (typeof func !== 'function') {
+          throw new Error("${functionName} is not a function");
+        }
+        
+        // Call the function and return its result
+        return func();
+      `);
+
+      const result = evalFunc();
+      console.log("Code evaluation result:", result);
+
+      if (result === area.expectedValue) {
+        // Mark as solved locally
+        const newSolvedPuzzles = new Set(solvedPuzzles);
+        newSolvedPuzzles.add(area.id);
+        setSolvedPuzzles(newSolvedPuzzles);
+
+        // Update selected area
+        setSelectedArea({
+          ...area,
+          puzzleCompleted: true,
+        });
+
+        alert(`Correct! You've solved the ${area.name} puzzle!`);
+      } else {
+        alert(`That doesn't seem to be the correct solution. Try again!`);
+      }
+    } catch (error: any) {
+      alert(`Error checking your solution: ${error.message}`);
+    }
+  };
+
   // Handle loading a code template from an interaction
   const handleLoadCodeTemplate = (template: string) => {
     setCurrentCode(template);
@@ -350,6 +418,8 @@ const App: React.FC = () => {
               language={currentLanguage}
               onChange={handleCodeChange}
               editorRef={editorRef}
+              currentArea={selectedArea}
+              onCheckSolution={handleCheckPuzzleSolution}
             />
 
             <OutputView output={output} />
@@ -368,8 +438,10 @@ const App: React.FC = () => {
               imageSrc="/haunted-room.jpg"
               areas={clickableAreas}
               currentCode={currentCode}
+              currentLanguage={currentLanguage}
               onPuzzleSolved={handlePuzzleSolved}
               onLoadCodeTemplate={handleLoadCodeTemplate}
+              onSelectArea={setSelectedArea}
             />
           </div>
 
@@ -391,6 +463,8 @@ const App: React.FC = () => {
                   language={currentLanguage}
                   onChange={handleCodeChange}
                   editorRef={editorRef}
+                  currentArea={selectedArea}
+                  onCheckSolution={handleCheckPuzzleSolution}
                 />
               </div>
 

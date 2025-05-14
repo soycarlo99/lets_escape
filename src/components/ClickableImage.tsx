@@ -1,20 +1,30 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ClickableArea } from "../types/clickableAreas";
+import { Language } from "../App";
+import {
+  generateTemplates,
+  generateFunctionNames,
+} from "../utils/templateGenerator";
 
-interface ClickableImageProps {
+// Update the onPuzzleSolved callback to also update the selected area in the parent component
+export interface ClickableImageProps {
   imageSrc?: string;
   areas?: ClickableArea[]; // Allow passing areas as props (optional)
   currentCode?: string; // Current code from the editor
+  currentLanguage?: Language; // Current selected language
   onPuzzleSolved?: (areaId: string) => void; // Callback when puzzle is solved
   onLoadCodeTemplate?: (template: string) => void; // Callback to load code template
+  onSelectArea?: (area: ClickableArea) => void; // Callback when an area is selected
 }
 
 export const ClickableImage: React.FC<ClickableImageProps> = ({
   imageSrc,
   areas = [], // Default to empty array if not provided
   currentCode = "", // Default to empty string
+  currentLanguage = "javascript", // Default to JavaScript
   onPuzzleSolved,
   onLoadCodeTemplate,
+  onSelectArea,
 }) => {
   // Track which area is being hovered
   const [hoveredAreaId, setHoveredAreaId] = useState<string | null>(null);
@@ -40,8 +50,11 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
 
   // Function to evaluate code and check if it produces the expected value
   const evaluateCode = (code: string, area: ClickableArea): any => {
-    if (!area.functionName) {
-      console.error("No function name provided for evaluation");
+    // Get the function name for the current language
+    const functionName = area.functionNames?.[currentLanguage];
+
+    if (!functionName) {
+      console.error(`No function name provided for ${currentLanguage}`);
       return null;
     }
 
@@ -50,13 +63,23 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
       const evalFunc = new Function(`
         ${code}
         
-        // Check if the function exists
-        if (typeof ${area.functionName} !== 'function') {
-          throw new Error("Function ${area.functionName} is not defined");
+        // Check if the function exists (handle different path notations like 'Class.method')
+        const parts = "${functionName}".split('.');
+        let func = window;
+        
+        for (const part of parts) {
+          if (func[part] === undefined) {
+            throw new Error("Function ${functionName} is not defined");
+          }
+          func = func[part];
+        }
+        
+        if (typeof func !== 'function') {
+          throw new Error("${functionName} is not a function");
         }
         
         // Call the function and return its result
-        return ${area.functionName}();
+        return func();
       `);
 
       return evalFunc();
@@ -75,6 +98,17 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
 
     if (area.expectedValue === undefined) {
       alert("This area doesn't have a puzzle to solve.");
+      return;
+    }
+
+    // Make sure we have function names for this area
+    if (!area.functionNames || !area.functionNames[currentLanguage]) {
+      console.error(
+        `No function name defined for ${currentLanguage} in area ${area.id}`,
+      );
+      alert(
+        "Error: Could not determine the function to check. Please try again or reload the page.",
+      );
       return;
     }
 
@@ -119,6 +153,26 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
 
     setMousePosition({ x: originalX, y: originalY });
   };
+
+  // Generate templates for areas with puzzle specs based on current language
+  useEffect(() => {
+    // Process areas with puzzle specs
+    areas.forEach((area) => {
+      if (area.puzzleSpec) {
+        // Generate templates and function names when needed
+        area.codeTemplates = generateTemplates(area.puzzleSpec);
+        area.functionNames = generateFunctionNames(area.puzzleSpec);
+      }
+    });
+
+    // Re-select the current area to refresh its data if needed
+    if (selectedArea) {
+      const updatedArea = areas.find((a) => a.id === selectedArea.id);
+      if (updatedArea) {
+        setSelectedArea(updatedArea);
+      }
+    }
+  }, [areas, currentLanguage]);
 
   // Update dimensions when image loads or resizes
   useEffect(() => {
@@ -206,9 +260,13 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
     // Set the selected area for the info panel
     setSelectedArea(area);
 
-    // If this area has a code template, load it into the editor
-    if (area.codeTemplate && typeof onLoadCodeTemplate === "function") {
-      onLoadCodeTemplate(area.codeTemplate);
+    // If this area has a code template for the current language, load it into the editor
+    if (
+      area.codeTemplates &&
+      area.codeTemplates[currentLanguage] &&
+      typeof onLoadCodeTemplate === "function"
+    ) {
+      onLoadCodeTemplate(area.codeTemplates[currentLanguage]);
     }
 
     // Show the info panel so users can check their solution
@@ -472,7 +530,8 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
           </div>
 
           {/* Display code template if available */}
-          {selectedArea.codeTemplate &&
+          {selectedArea.codeTemplates &&
+            selectedArea.codeTemplates[currentLanguage] &&
             !completedPuzzles.has(selectedArea.id) && (
               <div
                 style={{
@@ -487,16 +546,29 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
                   maxHeight: "150px",
                 }}
               >
-                <div style={{ marginBottom: "8px", color: "#4CAF50" }}>
-                  <strong>PUZZLE CODE TEMPLATE:</strong>
+                <div
+                  style={{
+                    marginBottom: "8px",
+                    color: "#4CAF50",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <strong>PUZZLE CODE TEMPLATE ({currentLanguage}):</strong>
+                  <div style={{ fontSize: "10px", color: "#aaa" }}>
+                    Expected solution: {String(selectedArea.expectedValue)}
+                  </div>
                 </div>
                 <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-                  {selectedArea.codeTemplate}
+                  {selectedArea.codeTemplates[currentLanguage]}
                 </pre>
                 <button
                   onClick={() =>
                     onLoadCodeTemplate &&
-                    onLoadCodeTemplate(selectedArea.codeTemplate || "")
+                    onLoadCodeTemplate(
+                      selectedArea.codeTemplates[currentLanguage] || "",
+                    )
                   }
                   style={{
                     marginTop: "10px",

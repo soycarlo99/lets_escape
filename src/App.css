@@ -452,7 +452,7 @@ html {
 .info-panel {
   position: fixed;
   bottom: 100px;
-  right: 20px;
+  left: 20px;
   width: 300px;
   background-color: rgba(0, 0, 0, 0.85);
   color: white;
@@ -479,7 +479,7 @@ html {
 .info-panel button {
   position: absolute;
   top: 10px;
-  right: 10px;
+  left: 10px;
   background: transparent;
   border: none;
   color: white;
@@ -668,4 +668,26 @@ html {
 .fade-out {
   opacity: 0;
   transition: opacity 0.5s ease;
+}
+
+.check-solution-button {
+  position: absolute !important;
+  bottom: 15px !important;
+  right: 15px !important;
+  z-index: 10 !important;
+  padding: 8px 16px !important;
+  background-color: #4caf50 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 4px !important;
+  font-weight: bold !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
+  transition: all 0.2s ease !important;
+}
+
+.check-solution-button:hover {
+  background-color: #45a049 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
 }
