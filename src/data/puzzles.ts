@@ -1,11 +1,12 @@
-import { Puzzle } from '../App';
+import { Puzzle } from "../App";
 
 // Define puzzles with templates for each language
 export const puzzles: Puzzle[] = [
   {
-    id: 'puzzle1',
-    title: 'String Reversal',
-    description: 'Complete the reverseString function to reverse the input string.',
+    id: "puzzle1",
+    title: "String Reversal",
+    description:
+      "Complete the reverseString function to reverse the input string.",
     templates: {
       javascript: `// PUZZLE: String Reversal
 // Complete the function to reverse the input string
@@ -85,17 +86,18 @@ function reverseString(str: string): string {
     // Your code here
     
     return "";
-}`
+}`,
     },
     tests: [
       { input: ["hello"], expected: "olleh" },
-      { input: ["javascript"], expected: "tpircsavaj" }
-    ]
+      { input: ["javascript"], expected: "tpircsavaj" },
+    ],
   },
   {
-    id: 'puzzle2',
-    title: 'Find the Missing Number',
-    description: 'Find the missing number in an array containing numbers from 1 to 10.',
+    id: "puzzle2",
+    title: "Find the Missing Number",
+    description:
+      "Find the missing number in an array containing numbers from 1 to 10.",
     templates: {
       javascript: `// PUZZLE: Find the Missing Number
 // The array contains numbers from 1 to 10 with one number missing
@@ -176,16 +178,15 @@ function findMissingNumber(numbers: number[]): number {
     // Your code here
     
     return 0;
-}`
+}`,
     },
-    tests: [
-      { input: [[1, 2, 3, 5, 6, 7, 8, 9, 10]], expected: 4 }
-    ]
+    tests: [{ input: [[1, 2, 3, 5, 6, 7, 8, 9, 10]], expected: 4 }],
   },
   {
-    id: 'puzzle3',
-    title: 'Secret Message Decoder',
-    description: 'Decode the secret message by implementing the decoder function.',
+    id: "puzzle3",
+    title: "Secret Message Decoder",
+    description:
+      "Decode the secret message by implementing the decoder function.",
     templates: {
       javascript: `// PUZZLE: Secret Message Decoder
 // The message has been encoded by shifting each letter in the alphabet
@@ -273,10 +274,9 @@ function decodeMessage(encodedMessage: string): string {
     // Your code here
     
     return "";
-}`
+}`,
     },
-    tests: [
-      { input: ["frgh euhdnhu"], expected: "code breaker" }
-    ]
-  }
-]; 
+    tests: [{ input: ["frgh euhdnhu"], expected: "code breaker" }],
+  },
+];
+

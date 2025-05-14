@@ -1,4 +1,4 @@
-/* Base styles */
+/* ========== BASE STYLES ========== */
 body,
 html {
   margin: 0;
@@ -7,7 +7,7 @@ html {
   height: 100%;
 }
 
-/* Original app container styles */
+/* ========== APP CONTAINER ========== */
 .app-container {
   width: 100%;
   max-width: 1200px;
@@ -16,12 +16,12 @@ html {
     Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
 }
 
-/* Only apply container constraints when in code editor view */
 .app-container.code-editor-view {
   margin: 0 auto;
   padding: 20px;
 }
 
+/* ========== HEADER STYLES ========== */
 .header {
   margin-bottom: 20px;
   padding: 10px 20px;
@@ -29,7 +29,7 @@ html {
   align-items: center;
   background-color: #f8f8f8;
   position: relative;
-  z-index: 10; /* Keep header above fullscreen content */
+  z-index: 10;
 }
 
 .header h1 {
@@ -38,6 +38,21 @@ html {
   color: #333;
 }
 
+.view-toggle-button {
+  padding: 8px 16px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 15px;
+}
+
+.view-toggle-button:hover {
+  background-color: #5a6268;
+}
+
+/* ========== CONTROLS ========== */
 .controls {
   display: flex;
   gap: 15px;
@@ -83,6 +98,7 @@ html {
   background-color: #45a049;
 }
 
+/* ========== PUZZLE DESCRIPTION ========== */
 .puzzle-description {
   padding: 12px 15px;
   background-color: #f8f9fa;
@@ -91,6 +107,7 @@ html {
   font-size: 14px;
 }
 
+/* ========== EDITOR & OUTPUT CONTAINERS ========== */
 .editor-output-container {
   display: flex;
   flex-direction: column;
@@ -138,7 +155,7 @@ html {
   white-space: pre-wrap;
 }
 
-/* Test results styles */
+/* ========== TEST RESULTS ========== */
 .test-results {
   margin-top: 10px;
   font-family: sans-serif;
@@ -227,36 +244,7 @@ html {
   margin-bottom: 5px;
 }
 
-/* Responsive layout */
-@media (min-width: 768px) {
-  .editor-output-container {
-    flex-direction: row;
-  }
-  .editor-container {
-    flex: 3;
-  }
-  .output-container {
-    flex: 2;
-    height: auto;
-  }
-}
-
-/* Styles for the view toggle button */
-.view-toggle-button {
-  padding: 8px 16px;
-  background-color: #6c757d;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-left: 15px;
-}
-
-.view-toggle-button:hover {
-  background-color: #5a6268;
-}
-
-/* Fullscreen interactive room styles - UPDATED */
+/* ========== INTERACTIVE ROOM ========== */
 .interactive-room-container {
   position: absolute;
   top: 0;
@@ -270,7 +258,6 @@ html {
   z-index: 1;
 }
 
-/* Add header for the interactive room with better positioning */
 .interactive-room-container h2,
 .interactive-room-container p {
   position: relative;
@@ -281,7 +268,7 @@ html {
   padding: 10px;
 }
 
-/* Update clickable image container to fill the screen */
+/* ========== CLICKABLE IMAGE CONTAINER ========== */
 .clickable-image-container {
   position: absolute;
   top: 0;
@@ -292,32 +279,77 @@ html {
   max-width: none;
 }
 
-/* Make the image fill the entire container */
 .clickable-image-container img {
   width: 100%;
   height: 100%;
-  object-fit: cover; /* This makes the image cover the entire container */
+  object-fit: cover;
   display: block;
   position: absolute;
   top: 0;
   left: 0;
 }
 
-/* Add some debug styles for development - can be removed later */
-.debug-coordinates {
+/* ========== INFO PANEL & ZOOM VIEW ========== */
+.zoomed-overlay {
   position: fixed;
-  bottom: 10px;
-  right: 10px;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 8px 12px;
-  font-family: monospace;
-  border-radius: 4px;
-  z-index: 1000;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.9);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
 }
 
-/* Add to your App.css */
+.zoomed-overlay img {
+  max-width: 90%;
+  max-height: 80vh;
+  border: 2px solid white;
+}
 
+.info-panel {
+  position: fixed;
+  bottom: 100px;
+  right: 20px;
+  width: 300px;
+  background-color: rgba(0, 0, 0, 0.85);
+  color: white;
+  padding: 20px;
+  border-radius: 8px;
+  z-index: 999;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-family: Georgia, serif;
+  animation: fadeIn 0.3s ease-in;
+}
+
+.info-panel h3 {
+  margin: 0 0 10px 0;
+  color: #f5deb3;
+  font-size: 20px;
+}
+
+.info-panel div {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.info-panel button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* ========== UI ELEMENTS & BUTTONS ========== */
 .game-message {
   position: fixed;
   bottom: 20px;
@@ -349,6 +381,59 @@ html {
 
 .map-mode-toggle:hover {
   background-color: #5a6268;
+}
+
+/* Book button styling */
+.book-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 64px;
+  height: 64px;
+  background-size: contain;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  z-index: 1000;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease;
+}
+
+.book-button:hover {
+  transform: scale(1.1);
+}
+
+/* Back button styling */
+.back-button {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  width: 40px;
+  height: 40px;
+  background-size: contain;
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  z-index: 10000;
+  transition: transform 0.2s ease;
+  filter: invert(1);
+}
+
+.back-button:hover {
+  transform: scale(1.1);
+}
+
+/* ========== DEVELOPMENT & DEBUG ========== */
+.debug-coordinates {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 8px 12px;
+  font-family: monospace;
+  border-radius: 4px;
+  z-index: 1000;
 }
 
 .area-mapping-tool .controls {
@@ -386,18 +471,7 @@ html {
   overflow: auto;
 }
 
-.debug-coordinates {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 8px 12px;
-  font-family: monospace;
-  border-radius: 4px;
-  z-index: 1000;
-}
-
+/* ========== ANIMATIONS ========== */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -406,6 +480,20 @@ html {
   to {
     opacity: 1;
     transform: translateY(0) translateX(-50%);
+  }
+}
+
+/* ========== RESPONSIVE LAYOUT ========== */
+@media (min-width: 768px) {
+  .editor-output-container {
+    flex-direction: row;
+  }
+  .editor-container {
+    flex: 3;
+  }
+  .output-container {
+    flex: 2;
+    height: auto;
   }
 }
 

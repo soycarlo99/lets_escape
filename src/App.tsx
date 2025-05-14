@@ -6,6 +6,7 @@ import { PuzzleSelector } from "./components/PuzzleSelector";
 import { puzzles } from "./data/puzzles";
 import { executeJavaScript, mockExecuteCode } from "./utils/codeExecution";
 import { ClickableImage } from "./components/ClickableImage";
+import { clickableAreas } from "./types/clickableAreas";
 import "./App.css";
 
 // Define types
@@ -335,7 +336,7 @@ const App: React.FC = () => {
         <div className="interactive-room-container">
           <h2>Escape Room Challenge</h2>
           <p>Click on objects in the room to interact with them</p>
-          <ClickableImage imageSrc={roomImagePath} />
+          <ClickableImage imageSrc="/haunted-room.jpg" areas={clickableAreas} />
         </div>
       )}
     </div>

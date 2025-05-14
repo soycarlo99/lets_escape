@@ -10,6 +10,8 @@ export interface ClickableArea {
   fillColor?: string;
   strokeColor?: string;
   zone?: string; // Optional grouping by zone
+  detailImage?: string; // Add this property
+  description?: string; // Add this property
 }
 
 // Group areas by zones for better organization
@@ -19,65 +21,41 @@ export const clickableAreas: ClickableArea[] = [
     id: "mirror",
     name: "Mirror",
     shape: "rect",
-    coords: [1629, 424, 97, 174],
+    coords: [1629, 424, 97, 174], // [x, y, width, height]
     action: "mirror",
     tooltip: "Examine the mirror",
     fillColor: "rgba(124, 252, 0, 0.3)",
     strokeColor: "rgba(124, 252, 0, 0.6)",
-    zone: "wall",
+    detailImage: "/mirror.jpg", // Add path to detailed mirror image
+    description:
+      "An antique mirror hanging on the wall. The glass appears to be slightly warped, and your reflection seems... different somehow. There's something eerie about how the light reflects off its surface.",
   },
-
-  // DOOR ZONE
+  // Add a door example
   {
     id: "door",
     name: "Door",
     shape: "rect",
-    coords: [800, 400, 120, 300],
+    coords: [340, 800, 50, 50], // Example coordinates - replace with actual door position
     action: "door",
-    tooltip: "Try the door",
+    tooltip: "Look at the lock",
     fillColor: "rgba(255, 165, 0, 0.3)",
     strokeColor: "rgba(255, 165, 0, 0.6)",
-    zone: "exit",
+    description:
+      "A heavy wooden door with an ornate brass lock. It appears to be locked from the other side. The keyhole is unusually large and seems to be in the shape of some kind of symbol.",
   },
-
-  // DESK ZONE
+  // Add a desk item example
   {
     id: "desk",
     name: "Desk",
-    shape: "rect",
-    coords: [400, 700, 200, 100],
+    shape: "poly",
+    coords: [675, 739, 863, 731, 899, 775, 678, 790],
     action: "desk",
-    tooltip: "Look at the desk",
+    tooltip: "Look at the deskk",
     fillColor: "rgba(0, 191, 255, 0.3)",
     strokeColor: "rgba(0, 191, 255, 0.6)",
-    zone: "furniture",
+    description:
+      "An old wooden writing desk covered in dust. There are several drawers that might contain useful items. On top of the desk, you see some scattered papers and what looks like an old journal.",
   },
-  {
-    id: "desk-drawer",
-    name: "Desk Drawer",
-    shape: "rect",
-    coords: [450, 750, 100, 30],
-    action: "desk-drawer",
-    tooltip: "Open the drawer",
-    fillColor: "rgba(70, 130, 180, 0.3)",
-    strokeColor: "rgba(70, 130, 180, 0.6)",
-    zone: "furniture",
-  },
-
-  // BOOKSHELF ZONE
-  {
-    id: "bookshelf",
-    name: "Bookshelf",
-    shape: "rect",
-    coords: [100, 300, 150, 400],
-    action: "bookshelf",
-    tooltip: "Browse the bookshelf",
-    fillColor: "rgba(139, 69, 19, 0.3)",
-    strokeColor: "rgba(139, 69, 19, 0.6)",
-    zone: "furniture",
-  },
-
-  // Add more areas organized by zone
 ];
 
 // Handle actions for different areas
