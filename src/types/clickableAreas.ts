@@ -1,4 +1,4 @@
-// src/data/clickableAreas.ts
+// src/types/clickableAreas.ts
 
 export interface ClickableArea {
   id: string;
@@ -10,8 +10,12 @@ export interface ClickableArea {
   fillColor?: string;
   strokeColor?: string;
   zone?: string; // Optional grouping by zone
-  detailImage?: string; // Add this property
-  description?: string; // Add this property
+  detailImage?: string; // Path to a detailed image
+  description?: string; // Descriptive text
+  expectedValue?: any; // Expected value from code solution
+  puzzleCompleted?: boolean; // Track if puzzle is solved
+  codeTemplate?: string; // Template code for the puzzle
+  functionName?: string; // Name of the function to check
 }
 
 // Group areas by zones for better organization
@@ -30,7 +34,7 @@ export const clickableAreas: ClickableArea[] = [
     description:
       "An antique mirror hanging on the wall. The glass appears to be slightly warped, and your reflection seems... different somehow. There's something eerie about how the light reflects off its surface.",
   },
-  // Add a door example
+  // Door with expected value for puzzle
   {
     id: "door",
     name: "Door",
@@ -41,7 +45,22 @@ export const clickableAreas: ClickableArea[] = [
     fillColor: "rgba(255, 165, 0, 0.3)",
     strokeColor: "rgba(255, 165, 0, 0.6)",
     description:
-      "A heavy wooden door with an ornate brass lock. It appears to be locked from the other side. The keyhole is unusually large and seems to be in the shape of some kind of symbol.",
+      "A heavy wooden door with an ornate brass lock. It appears to be locked from the other side. The keyhole is unusually large and seems to be in the shape of some kind of symbol. You need to find the correct 4-digit code to unlock it.",
+    expectedValue: 1234, // The expected value that should be output by the code
+    puzzleCompleted: false, // Initially not completed
+    codeTemplate: `/**
+ * The door has a 4-digit code lock.
+ * Implement this function to return the correct code to unlock the door.
+ * 
+ * @returns {number} The 4-digit unlock code
+ */
+function unlockDoor() {
+  // Your code here
+  
+  // Hint: The code is a 4-digit number
+  return 0; // Replace with the correct code
+}`,
+    functionName: "unlockDoor",
   },
   // Add a desk item example
   {
@@ -50,7 +69,7 @@ export const clickableAreas: ClickableArea[] = [
     shape: "poly",
     coords: [675, 739, 863, 731, 899, 775, 678, 790],
     action: "desk",
-    tooltip: "Look at the deskk",
+    tooltip: "Look at the desk",
     fillColor: "rgba(0, 191, 255, 0.3)",
     strokeColor: "rgba(0, 191, 255, 0.6)",
     description:

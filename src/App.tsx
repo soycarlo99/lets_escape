@@ -60,8 +60,8 @@ const App: React.FC = () => {
   const editorRef = useRef<any>(null);
   const [showSidebar, setShowSidebar] = useState<boolean>(true);
 
-  // Path to your haunted room image - update this to the correct path
-  const roomImagePath = "/haunted-room.jpg"; // Place this image in your public folder
+  // Add state to track solved puzzles
+  const [solvedPuzzles, setSolvedPuzzles] = useState<Set<string>>(new Set());
 
   // Initial editor setup
   useEffect(() => {
@@ -273,16 +273,34 @@ const App: React.FC = () => {
     setOutput(testResults);
   };
 
-  // Toggle between views
-  const toggleView = () => {
-    setActiveView(
-      activeView === View.CodeEditor ? View.InteractiveRoom : View.CodeEditor,
-    );
+  // Handle when a puzzle is solved in the escape room
+  const handlePuzzleSolved = (areaId: string) => {
+    console.log(`Puzzle solved: ${areaId}`);
+
+    // Add this puzzle to the solved puzzles set
+    const newSolvedPuzzles = new Set(solvedPuzzles);
+    newSolvedPuzzles.add(areaId);
+    setSolvedPuzzles(newSolvedPuzzles);
+
+    // Show a celebration message or trigger other events
+    // For example, you could show a modal, play a sound, etc.
+  };
+
+  // Handle loading a code template from an interaction
+  const handleLoadCodeTemplate = (template: string) => {
+    setCurrentCode(template);
   };
 
   // Toggle sidebar visibility in interactive view
   const toggleSidebar = () => {
     setShowSidebar(!showSidebar);
+  };
+
+  // Toggle between views
+  const toggleView = () => {
+    setActiveView(
+      activeView === View.CodeEditor ? View.InteractiveRoom : View.CodeEditor,
+    );
   };
 
   // Render the app with view switching
@@ -349,6 +367,9 @@ const App: React.FC = () => {
             <ClickableImage
               imageSrc="/haunted-room.jpg"
               areas={clickableAreas}
+              currentCode={currentCode}
+              onPuzzleSolved={handlePuzzleSolved}
+              onLoadCodeTemplate={handleLoadCodeTemplate}
             />
           </div>
 

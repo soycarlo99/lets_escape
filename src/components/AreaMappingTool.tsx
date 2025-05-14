@@ -1,6 +1,6 @@
 // src/components/AreaMappingTool.tsx
 import React, { useState, useRef, useEffect } from "react";
-import { ClickableArea } from "../data/clickableAreas";
+import { ClickableArea } from "../types/clickableAreas";
 
 interface AreaMappingToolProps {
   imageSrc: string;

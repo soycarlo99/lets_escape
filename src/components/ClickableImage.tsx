@@ -4,11 +4,17 @@ import { ClickableArea } from "../types/clickableAreas";
 interface ClickableImageProps {
   imageSrc?: string;
   areas?: ClickableArea[]; // Allow passing areas as props (optional)
+  currentCode?: string; // Current code from the editor
+  onPuzzleSolved?: (areaId: string) => void; // Callback when puzzle is solved
+  onLoadCodeTemplate?: (template: string) => void; // Callback to load code template
 }
 
 export const ClickableImage: React.FC<ClickableImageProps> = ({
   imageSrc,
   areas = [], // Default to empty array if not provided
+  currentCode = "", // Default to empty string
+  onPuzzleSolved,
+  onLoadCodeTemplate,
 }) => {
   // Track which area is being hovered
   const [hoveredAreaId, setHoveredAreaId] = useState<string | null>(null);
@@ -20,12 +26,81 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
   const [selectedArea, setSelectedArea] = useState<ClickableArea | null>(null);
   const [showInfoPanel, setShowInfoPanel] = useState(false);
 
+  // Track completed puzzles locally
+  const [completedPuzzles, setCompletedPuzzles] = useState<Set<string>>(
+    new Set(),
+  );
+
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
   // Set the actual dimensions of your image here
   const originalWidth = 1920;
   const originalHeight = 1080;
+
+  // Function to evaluate code and check if it produces the expected value
+  const evaluateCode = (code: string, area: ClickableArea): any => {
+    if (!area.functionName) {
+      console.error("No function name provided for evaluation");
+      return null;
+    }
+
+    try {
+      // This is a more structured approach to evaluate code
+      const evalFunc = new Function(`
+        ${code}
+        
+        // Check if the function exists
+        if (typeof ${area.functionName} !== 'function') {
+          throw new Error("Function ${area.functionName} is not defined");
+        }
+        
+        // Call the function and return its result
+        return ${area.functionName}();
+      `);
+
+      return evalFunc();
+    } catch (error) {
+      console.error("Error evaluating code:", error);
+      return null;
+    }
+  };
+
+  // Function to check if the solution is correct
+  const checkSolution = (area: ClickableArea) => {
+    if (!currentCode || currentCode.trim() === "") {
+      alert("Please write some code in the editor first.");
+      return;
+    }
+
+    if (area.expectedValue === undefined) {
+      alert("This area doesn't have a puzzle to solve.");
+      return;
+    }
+
+    try {
+      const result = evaluateCode(currentCode, area);
+      console.log("Code evaluation result:", result);
+
+      if (result === area.expectedValue) {
+        // Mark as solved locally
+        const newCompletedPuzzles = new Set(completedPuzzles);
+        newCompletedPuzzles.add(area.id);
+        setCompletedPuzzles(newCompletedPuzzles);
+
+        // Notify parent component
+        if (onPuzzleSolved) {
+          onPuzzleSolved(area.id);
+        }
+
+        alert(`Correct! You've solved the ${area.name} puzzle!`);
+      } else {
+        alert(`That doesn't seem to be the correct solution. Try again!`);
+      }
+    } catch (error: any) {
+      alert(`Error checking your solution: ${error.message}`);
+    }
+  };
 
   // Handle mouse movement to track coordinates
   const handleMouseMove = (e: React.MouseEvent<HTMLImageElement>) => {
@@ -44,9 +119,6 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
 
     setMousePosition({ x: originalX, y: originalY });
   };
-
-  // Define clickable areas (combine with any passed in props)
-  const clickableAreas: ClickableArea[] = [...areas];
 
   // Update dimensions when image loads or resizes
   useEffect(() => {
@@ -118,7 +190,7 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
   const toggleInfoPanel = () => {
     // If there's no selected area yet, use the last hovered area
     if (!selectedArea && hoveredAreaId) {
-      const area = clickableAreas.find((a) => a.id === hoveredAreaId);
+      const area = areas.find((a) => a.id === hoveredAreaId);
       if (area) {
         setSelectedArea(area);
       }
@@ -134,6 +206,15 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
     // Set the selected area for the info panel
     setSelectedArea(area);
 
+    // If this area has a code template, load it into the editor
+    if (area.codeTemplate && typeof onLoadCodeTemplate === "function") {
+      onLoadCodeTemplate(area.codeTemplate);
+    }
+
+    // Show the info panel so users can check their solution
+    setShowInfoPanel(true);
+
+    // Handle specific actions based on the area type
     switch (area.action) {
       case "mirror":
         if (area.detailImage) {
@@ -148,7 +229,13 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
         }
         break;
       case "door":
-        alert(`You try the ${area.name}. It appears to be locked.`);
+        // Check if this puzzle has been completed
+        if (completedPuzzles.has(area.id)) {
+          alert(`The ${area.name} unlocks and swings open!`);
+        } else {
+          // Just show the info panel, don't show an alert
+          console.log(`Door puzzle not yet solved. Showing info panel.`);
+        }
         break;
       case "desk":
         alert(
@@ -165,12 +252,20 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
   // Helper function to render different SVG shapes based on the area type
   const renderShape = (area: ClickableArea) => {
     const isHovered = hoveredAreaId === area.id;
-    const fill = isHovered
-      ? area.fillColor || "rgba(255, 255, 255, 0.3)"
-      : "rgba(0, 0, 0, 0)";
-    const stroke = isHovered
-      ? area.strokeColor || "rgba(255, 255, 255, 0.6)"
-      : "rgba(0, 0, 0, 0)";
+    const isPuzzleSolved = completedPuzzles.has(area.id);
+
+    // Change fill color if the puzzle is completed
+    const fill = isPuzzleSolved
+      ? "rgba(0, 255, 0, 0.3)" // Green for solved puzzles
+      : isHovered
+        ? area.fillColor || "rgba(255, 255, 255, 0.3)"
+        : "rgba(0, 0, 0, 0)";
+
+    const stroke = isPuzzleSolved
+      ? "rgba(0, 255, 0, 0.6)" // Green for solved puzzles
+      : isHovered
+        ? area.strokeColor || "rgba(255, 255, 255, 0.6)"
+        : "rgba(0, 0, 0, 0)";
 
     if (area.shape === "rect") {
       const [x, y, width, height] = area.coords;
@@ -274,12 +369,12 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
           preserveAspectRatio="xMidYMid slice"
         >
           {/* Render all clickable areas */}
-          {clickableAreas.map((area) => renderShape(area))}
+          {areas.map((area) => renderShape(area))}
 
           {/* Optional: Show tooltips for hovered areas */}
           {hoveredAreaId && (
             <g>
-              {clickableAreas
+              {areas
                 .filter((area) => area.id === hoveredAreaId && area.tooltip)
                 .map((area) => {
                   // Calculate tooltip position based on area type
@@ -351,35 +446,96 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
         />
       )}
 
-      {/* Information Panel */}
+      {/* Information Panel with Check Solution button */}
       {showInfoPanel && selectedArea && (
-        <div
-          className="info-panel"
-          style={{
-            position: "fixed",
-            bottom: "100px",
-            right: "20px",
-            width: "300px",
-            backgroundColor: "rgba(0, 0, 0, 0.85)",
-            color: "white",
-            padding: "20px",
-            borderRadius: "8px",
-            zIndex: 999,
-            boxShadow: "0 4px 15px rgba(0, 0, 0, 0.5)",
-            border: "1px solid rgba(255, 255, 255, 0.2)",
-            fontFamily: "Georgia, serif",
-            animation: "fadeIn 0.3s ease-in",
-          }}
-        >
+        <div className="info-panel">
           <h3
-            style={{ margin: "0 0 10px 0", color: "#f5deb3", fontSize: "20px" }}
+            style={{
+              margin: "0 0 10px 0",
+              color: completedPuzzles.has(selectedArea.id)
+                ? "#7FFF7F"
+                : "#f5deb3",
+              fontSize: "20px",
+            }}
           >
-            {selectedArea.name}
+            {selectedArea.name} {completedPuzzles.has(selectedArea.id) && "✓"}
           </h3>
-          <div style={{ fontSize: "16px", lineHeight: "1.5" }}>
+          <div
+            style={{
+              fontSize: "16px",
+              lineHeight: "1.5",
+              marginBottom: "15px",
+            }}
+          >
             {selectedArea.description ||
               "No information available about this item."}
           </div>
+
+          {/* Display code template if available */}
+          {selectedArea.codeTemplate &&
+            !completedPuzzles.has(selectedArea.id) && (
+              <div
+                style={{
+                  marginTop: "10px",
+                  marginBottom: "15px",
+                  padding: "10px",
+                  background: "rgba(0, 0, 0, 0.5)",
+                  borderLeft: "3px solid #4CAF50",
+                  fontFamily: "monospace",
+                  fontSize: "12px",
+                  overflow: "auto",
+                  maxHeight: "150px",
+                }}
+              >
+                <div style={{ marginBottom: "8px", color: "#4CAF50" }}>
+                  <strong>PUZZLE CODE TEMPLATE:</strong>
+                </div>
+                <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+                  {selectedArea.codeTemplate}
+                </pre>
+                <button
+                  onClick={() =>
+                    onLoadCodeTemplate &&
+                    onLoadCodeTemplate(selectedArea.codeTemplate || "")
+                  }
+                  style={{
+                    marginTop: "10px",
+                    padding: "5px 10px",
+                    backgroundColor: "#2196F3",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                  }}
+                >
+                  Load Template
+                </button>
+              </div>
+            )}
+
+          {/* Add the Check Solution button only if this area has an expected value and is not solved */}
+          {selectedArea.expectedValue !== undefined &&
+            !completedPuzzles.has(selectedArea.id) && (
+              <button
+                onClick={() => checkSolution(selectedArea)}
+                style={{
+                  marginTop: "10px",
+                  padding: "8px 16px",
+                  backgroundColor: "#4CAF50",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                  display: "block",
+                  width: "100%",
+                }}
+              >
+                Check Solution
+              </button>
+            )}
+
           <button
             onClick={() => setShowInfoPanel(false)}
             style={{
@@ -400,23 +556,7 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
 
       {/* ZOOMED IMAGE VIEW */}
       {isZooming && (
-        <div
-          className="zoomed-overlay"
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.9)",
-            zIndex: 9999,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            padding: "20px",
-          }}
-        >
+        <div className="zoomed-overlay">
           {/* Back button in top-left corner using back.svg */}
           <button
             onClick={handleBackClick}
@@ -485,6 +625,37 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
           @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
+          }
+          
+          .info-panel {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            width: 300px;
+            background-color: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            z-index: 999;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-family: Georgia, serif;
+            animation: fadeIn 0.3s ease-in;
+          }
+          
+          .zoomed-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
           }
         `}
       </style>
