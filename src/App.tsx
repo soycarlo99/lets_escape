@@ -6,7 +6,8 @@ import { PuzzleSelector } from "./components/PuzzleSelector";
 import { puzzles } from "./data/puzzles";
 import { executeJavaScript, mockExecuteCode } from "./utils/codeExecution";
 import { ClickableImage } from "./components/ClickableImage";
-import { clickableAreas } from "./types/clickableAreas";
+import { clickableAreas, ClickableArea } from "./types/clickableAreas";
+import { PuzzleSpec, generateTemplates } from "./utils/templateGenerator";
 import "./App.css";
 
 // Define types
@@ -35,8 +36,9 @@ export type Puzzle = {
   id: string;
   title: string;
   description: string;
-  templates: Record<Language, string>;
+  templates?: Record<Language, string>;
   tests: PuzzleTest[];
+  puzzleSpec?: PuzzleSpec;
 };
 
 // Views enum for managing which view is active
@@ -66,18 +68,31 @@ const App: React.FC = () => {
   // Add state to track solved puzzles
   const [solvedPuzzles, setSolvedPuzzles] = useState<Set<string>>(new Set());
 
-  // Initial editor setup
+  // Effect to update editor content based on language, selected puzzle, or selected area
   useEffect(() => {
-    updateEditorContent();
-  }, [currentLanguage, currentPuzzle]);
+    let newCode: string | undefined = undefined;
 
-  // All your existing functions remain the same
-  const updateEditorContent = () => {
-    if (currentPuzzle) {
-      // Load the template for the current puzzle and language
-      setCurrentCode(currentPuzzle.templates[currentLanguage]);
+    if (activeView === View.InteractiveRoom && selectedArea?.puzzleSpec) {
+      // In InteractiveRoom, if a clickable area with a puzzle is selected, it takes precedence
+      const templates = generateTemplates(selectedArea.puzzleSpec);
+      newCode = templates[currentLanguage];
+    } else if (currentPuzzle) {
+      // Otherwise, if a puzzle is selected via the PuzzleSelector
+      if (currentPuzzle.puzzleSpec) {
+        const templates = generateTemplates(currentPuzzle.puzzleSpec);
+        newCode = templates[currentLanguage];
+      }
+      // Fallback to pre-defined templates if puzzleSpec didn't yield one or doesn't exist for the current puzzle
+      if (!newCode && currentPuzzle.templates) {
+        newCode = currentPuzzle.templates[currentLanguage];
+      }
+    }
+
+    if (newCode) {
+      setCurrentCode(newCode);
     } else {
-      // Default templates for each language
+      // Default code if no specific puzzle template applies for the current context and language
+      // This also covers the case where currentPuzzle is null and not in InteractiveRoom with a puzzle area
       switch (currentLanguage) {
         case "javascript":
           setCurrentCode(
@@ -123,7 +138,7 @@ const App: React.FC = () => {
           setCurrentCode("// Write your code here");
       }
     }
-  };
+  }, [currentLanguage, currentPuzzle, selectedArea, activeView]);
 
   const handleLanguageChange = (language: Language) => {
     setCurrentLanguage(language);
@@ -132,7 +147,6 @@ const App: React.FC = () => {
   const handlePuzzleChange = (puzzleId: string) => {
     if (!puzzleId) {
       setCurrentPuzzle(null);
-      updateEditorContent();
       return;
     }
 
@@ -141,7 +155,6 @@ const App: React.FC = () => {
   };
 
   const handleLoadPuzzle = () => {
-    updateEditorContent();
   };
 
   const handleCodeChange = (code: string) => {
@@ -293,12 +306,11 @@ const App: React.FC = () => {
   const handleCheckPuzzleSolution = (area: ClickableArea) => {
     // Call the evaluation function in ClickableImage
     try {
-      // Get the function name for the current language
       const functionName = area.functionNames?.[currentLanguage];
 
       if (!functionName) {
-        console.error(`No function name provided for ${currentLanguage}`);
-        alert(`Error: No function name defined for ${currentLanguage}`);
+        console.error(`No function name provided for ${currentLanguage} in area ${area.id}`);
+        alert(`Configuration error: No function name defined for ${currentLanguage} for this puzzle.`);
         return;
       }
 
@@ -307,31 +319,26 @@ const App: React.FC = () => {
         return;
       }
 
-      // Create a function to evaluate the code
-      const evalFunc = new Function(`
-        ${currentCode}
-        
-        // Check if the function exists (handle different path notations like 'Class.method')
-        const parts = "${functionName}".split('.');
-        let func = window;
-        
-        for (const part of parts) {
-          if (func[part] === undefined) {
-            throw new Error("Function ${functionName} is not defined");
-          }
-          func = func[part];
-        }
-        
-        if (typeof func !== 'function') {
-          throw new Error("${functionName} is not a function");
-        }
-        
-        // Call the function and return its result
-        return func();
-      `);
+      const scriptToExecute = `
+        ${currentCode} // User's code from the editor
 
+        let callable;
+        try {
+          callable = eval('${functionName}');
+        } catch (e) {
+          // callable will remain undefined, handled by the typeof check below.
+        }
+
+        if (typeof callable !== 'function') {
+          throw new Error("Function or method '${functionName}' is not defined by your code, is not a function, or is not accessible. Please check your function's definition and name.");
+        }
+        
+        return callable();
+      `;
+
+      const evalFunc = new Function(scriptToExecute);
       const result = evalFunc();
-      console.log("Code evaluation result:", result);
+      console.log("Code evaluation result (from App.tsx check):", result);
 
       if (result === area.expectedValue) {
         // Mark as solved locally

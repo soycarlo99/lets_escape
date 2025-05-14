@@ -50,41 +50,45 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
 
   // Function to evaluate code and check if it produces the expected value
   const evaluateCode = (code: string, area: ClickableArea): any => {
-    // Get the function name for the current language
     const functionName = area.functionNames?.[currentLanguage];
 
     if (!functionName) {
-      console.error(`No function name provided for ${currentLanguage}`);
+      console.error(`No function name provided for ${currentLanguage} in area ${area.id}`);
+      // Optionally, alert the user or provide more direct feedback here if this configuration issue occurs
       return null;
     }
 
     try {
-      // This is a more structured approach to evaluate code
-      const evalFunc = new Function(`
-        ${code}
-        
-        // Check if the function exists (handle different path notations like 'Class.method')
-        const parts = "${functionName}".split('.');
-        let func = window;
-        
-        for (const part of parts) {
-          if (func[part] === undefined) {
-            throw new Error("Function ${functionName} is not defined");
-          }
-          func = func[part];
-        }
-        
-        if (typeof func !== 'function') {
-          throw new Error("${functionName} is not a function");
-        }
-        
-        // Call the function and return its result
-        return func();
-      `);
+      // The script to be executed by new Function.
+      // It includes the user's code and then attempts to call the specified function.
+      const scriptToExecute = `
+        ${code} // User's code is injected here.
 
+        // After user's code, try to resolve the functionName to an actual function.
+        // 'eval' here is used to resolve the function path (e.g., "myFunction" or "MyClass.myStaticMethod")
+        // within the scope of this 'new Function' where 'code' has been executed.
+        let callable;
+        try {
+          callable = eval('${functionName}');
+        } catch (e) {
+          // If eval throws (e.g., path doesn't exist or intermediate part is not an object),
+          // callable will remain undefined, and the typeof check below will handle it.
+        }
+
+        if (typeof callable !== 'function') {
+          throw new Error("Function or method '${functionName}' is not defined by your code, is not a function, or is not accessible with the specified path. Please check your function's definition and name.");
+        }
+        
+        return callable(); // Call the resolved function/method.
+      `;
+
+      const evalFunc = new Function(scriptToExecute);
       return evalFunc();
+
     } catch (error) {
-      console.error("Error evaluating code:", error);
+      // This catches errors from 'new Function' compilation or runtime errors from 'scriptToExecute'.
+      console.error(`Error during code evaluation for function '${functionName}':`, error);
+      // The checkSolution function, which calls this, will alert the user.
       return null;
     }
   };
@@ -257,8 +261,13 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
   const handleAreaClick = (area: ClickableArea) => {
     console.log(`Clicked on area: ${area.id}`);
 
-    // Set the selected area for the info panel
-    setSelectedArea(area);
+    // Set the selected area for the info panel (ClickableImage's local state)
+    setSelectedArea(area); // This updates ClickableImage's own local state for its info panel
+
+    // Notify App.tsx about the selected area so it can update its own state
+    if (typeof onSelectArea === "function") {
+      onSelectArea(area); // This calls App.tsx's setSelectedArea function
+    }
 
     // If this area has a code template for the current language, load it into the editor
     if (
@@ -530,8 +539,7 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
           </div>
 
           {/* Display code template if available */}
-          {selectedArea.codeTemplates &&
-            selectedArea.codeTemplates[currentLanguage] &&
+          {selectedArea?.puzzleSpec && selectedArea.codeTemplates?.[currentLanguage] &&
             !completedPuzzles.has(selectedArea.id) && (
               <div
                 style={{
@@ -566,6 +574,7 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
                 <button
                   onClick={() =>
                     onLoadCodeTemplate &&
+                    selectedArea.codeTemplates &&
                     onLoadCodeTemplate(
                       selectedArea.codeTemplates[currentLanguage] || "",
                     )

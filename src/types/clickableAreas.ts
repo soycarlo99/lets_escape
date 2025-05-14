@@ -4,8 +4,8 @@
 import { Language } from "../App";
 import {
   PuzzleSpec,
-  generateTemplates,
-  generateFunctionNames,
+  // generateTemplates, // Removed unused import
+  // generateFunctionNames, // Removed unused import
 } from "../utils/templateGenerator";
 
 export interface ClickableArea {

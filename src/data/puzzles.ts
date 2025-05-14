@@ -1,4 +1,5 @@
 import { Puzzle } from "../App";
+import { PuzzleSpec } from "../utils/templateGenerator";
 
 // Define puzzles with templates for each language
 export const puzzles: Puzzle[] = [
@@ -7,6 +8,15 @@ export const puzzles: Puzzle[] = [
     title: "String Reversal",
     description:
       "Complete the reverseString function to reverse the input string.",
+    puzzleSpec: {
+      name: "reverseString",
+      description: "Complete the function to reverse the input string. Example: reverseString(\"hello\") should return \"olleh\"",
+      returnType: "string",
+      returnDescription: "The reversed string.",
+      parameters: [
+        { name: "str", type: "string", description: "The input string to be reversed." }
+      ],
+    },
     templates: {
       javascript: `// PUZZLE: String Reversal
 // Complete the function to reverse the input string
