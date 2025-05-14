@@ -53,7 +53,9 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
     const functionName = area.functionNames?.[currentLanguage];
 
     if (!functionName) {
-      console.error(`No function name provided for ${currentLanguage} in area ${area.id}`);
+      console.error(
+        `No function name provided for ${currentLanguage} in area ${area.id}`,
+      );
       // Optionally, alert the user or provide more direct feedback here if this configuration issue occurs
       return null;
     }
@@ -84,10 +86,12 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
 
       const evalFunc = new Function(scriptToExecute);
       return evalFunc();
-
     } catch (error) {
       // This catches errors from 'new Function' compilation or runtime errors from 'scriptToExecute'.
-      console.error(`Error during code evaluation for function '${functionName}':`, error);
+      console.error(
+        `Error during code evaluation for function '${functionName}':`,
+        error,
+      );
       // The checkSolution function, which calls this, will alert the user.
       return null;
     }
@@ -495,7 +499,7 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
           style={{
             position: "fixed",
             bottom: "20px",
-            right: "20px",
+            left: "20px",
             width: "64px",
             height: "64px",
             background: `url(/book.png) no-repeat center center`,
@@ -539,7 +543,8 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
           </div>
 
           {/* Display code template if available */}
-          {selectedArea?.puzzleSpec && selectedArea.codeTemplates?.[currentLanguage] &&
+          {selectedArea?.puzzleSpec &&
+            selectedArea.codeTemplates?.[currentLanguage] &&
             !completedPuzzles.has(selectedArea.id) && (
               <div
                 style={{
@@ -565,7 +570,7 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
                 >
                   <strong>PUZZLE CODE TEMPLATE ({currentLanguage}):</strong>
                   <div style={{ fontSize: "10px", color: "#aaa" }}>
-                    Expected solution: {String(selectedArea.expectedValue)}
+                    {/* Expected solution: {String(selectedArea.expectedValue)} */}
                   </div>
                 </div>
                 <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>

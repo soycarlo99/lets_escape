@@ -61,6 +61,9 @@ const App: React.FC = () => {
   const [output, setOutput] = useState<string | React.ReactNode>("");
   const editorRef = useRef<any>(null);
   const [showSidebar, setShowSidebar] = useState<boolean>(true);
+  const [sidebarWidth, setSidebarWidth] = useState<number>(450); // Initial sidebar width in pixels
+  const [isResizing, setIsResizing] = useState<boolean>(false);
+  const interactiveRoomRef = useRef<HTMLDivElement>(null); // Ref for the container of room and sidebar
 
   // State to track the currently selected interactive area
   const [selectedArea, setSelectedArea] = useState<ClickableArea | null>(null);
@@ -376,7 +379,53 @@ const App: React.FC = () => {
     setActiveView(
       activeView === View.CodeEditor ? View.InteractiveRoom : View.CodeEditor,
     );
+    // Reset sidebar width when switching to interactive view if it was collapsed
+    if (activeView === View.CodeEditor && sidebarWidth < 100) {
+      setSidebarWidth(450);
+      setShowSidebar(true);
+    }
   };
+
+  // Handlers for sidebar resizing
+  const handleMouseDownOnResizeHandle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing || !interactiveRoomRef.current) return;
+      // Calculate new width based on mouse position relative to the right edge of the screen
+      // or the edge of the interactiveRoomRef if it's not full screen.
+      const newWidth = window.innerWidth - e.clientX;
+      
+      // Apply constraints to sidebar width (e.g., min 200px, max 800px or 50% of window)
+      const minWidth = 200;
+      const maxWidth = Math.min(800, window.innerWidth * 0.7);
+
+      if (newWidth > minWidth && newWidth < maxWidth) {
+        setSidebarWidth(newWidth);
+      } else if (newWidth <= minWidth) {
+        setSidebarWidth(minWidth);
+      } else {
+        setSidebarWidth(maxWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
 
   // Render the app with view switching
   return (
@@ -434,7 +483,7 @@ const App: React.FC = () => {
         </>
       ) : (
         // Interactive Room View with Monaco editor sidebar
-        <div className="interactive-room-with-editor">
+        <div className="interactive-room-with-editor" ref={interactiveRoomRef}>
           <div className="interactive-room-container">
             <h2>Escape Room Challenge</h2>
             <p>Click on objects in the room to interact with them</p>
@@ -453,32 +502,35 @@ const App: React.FC = () => {
           </div>
 
           {showSidebar && (
-            <div className="editor-sidebar">
-              <div className="sidebar-controls">
-                <LanguageSelector
-                  currentLanguage={currentLanguage}
-                  onLanguageChange={handleLanguageChange}
-                />
-                <button className="run-button" onClick={runCode}>
-                  Run Code
-                </button>
-              </div>
+            <>
+              <div className="resize-handle" onMouseDown={handleMouseDownOnResizeHandle} />
+              <div className="editor-sidebar" style={{ width: `${sidebarWidth}px` }}>
+                <div className="sidebar-controls">
+                  <LanguageSelector
+                    currentLanguage={currentLanguage}
+                    onLanguageChange={handleLanguageChange}
+                  />
+                  <button className="run-button" onClick={runCode}>
+                    Run Code
+                  </button>
+                </div>
 
-              <div className="sidebar-editor">
-                <EditorView
-                  code={currentCode}
-                  language={currentLanguage}
-                  onChange={handleCodeChange}
-                  editorRef={editorRef}
-                  currentArea={selectedArea}
-                  onCheckSolution={handleCheckPuzzleSolution}
-                />
-              </div>
+                <div className="sidebar-editor">
+                  <EditorView
+                    code={currentCode}
+                    language={currentLanguage}
+                    onChange={handleCodeChange}
+                    editorRef={editorRef}
+                    currentArea={selectedArea}
+                    onCheckSolution={handleCheckPuzzleSolution}
+                  />
+                </div>
 
-              <div className="sidebar-output">
-                <OutputView output={output} />
+                <div className="sidebar-output">
+                  <OutputView output={output} />
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
       )}
