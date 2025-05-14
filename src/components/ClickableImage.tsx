@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ClickableArea } from "../types/clickableAreas.ts";
+import { ClickableArea } from "../types/clickableAreas";
 
 interface ClickableImageProps {
   imageSrc?: string;
@@ -184,7 +184,11 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
           fill={fill}
           stroke={stroke}
           strokeWidth="2"
-          className="clickable-shape"
+          style={{
+            cursor: "pointer",
+            pointerEvents: "auto",
+            transition: "fill 0.3s ease",
+          }}
           onClick={() => handleAreaClick(area)}
           onMouseEnter={() => setHoveredAreaId(area.id)}
           onMouseLeave={() => setHoveredAreaId(null)}
@@ -201,7 +205,11 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
           fill={fill}
           stroke={stroke}
           strokeWidth="2"
-          className="clickable-shape"
+          style={{
+            cursor: "pointer",
+            pointerEvents: "auto",
+            transition: "fill 0.3s ease",
+          }}
           onClick={() => handleAreaClick(area)}
           onMouseEnter={() => setHoveredAreaId(area.id)}
           onMouseLeave={() => setHoveredAreaId(null)}
@@ -220,7 +228,11 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
           fill={fill}
           stroke={stroke}
           strokeWidth="2"
-          className="clickable-shape"
+          style={{
+            cursor: "pointer",
+            pointerEvents: "auto",
+            transition: "fill 0.3s ease",
+          }}
           onClick={() => handleAreaClick(area)}
           onMouseEnter={() => setHoveredAreaId(area.id)}
           onMouseLeave={() => setHoveredAreaId(null)}
@@ -239,7 +251,10 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
         src={imagePath}
         alt="Haunted Room"
         onMouseMove={handleMouseMove}
-        className={isZooming ? "fade-out" : ""}
+        style={{
+          opacity: isZooming ? 0 : 1,
+          transition: "opacity 0.5s ease-in-out",
+        }}
       />
 
       {/* SVG overlay - positioned absolutely to match image exactly */}
@@ -248,7 +263,14 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
           width={dimensions.width}
           height={dimensions.height}
           viewBox={`0 0 ${originalWidth} ${originalHeight}`}
-          className="svg-overlay"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            pointerEvents: "none",
+            opacity: isZooming ? 0 : 1,
+            transition: "opacity 0.5s ease-in-out",
+          }}
           preserveAspectRatio="xMidYMid slice"
         >
           {/* Render all clickable areas */}
@@ -284,13 +306,15 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
                         width={120}
                         height={24}
                         rx={5}
-                        className="tooltip-background"
+                        fill="rgba(0, 0, 0, 0.7)"
                       />
                       <text
                         x={tooltipX}
                         y={tooltipY - 5}
                         textAnchor="middle"
-                        className="tooltip-text"
+                        fill="white"
+                        fontSize="14"
+                        fontFamily="Arial"
                       >
                         {area.tooltip}
                       </text>
@@ -306,10 +330,21 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
       {!isZooming && (
         <button
           onClick={toggleInfoPanel}
-          className={`book-button ${showInfoPanel ? "active" : ""}`}
           style={{
+            position: "fixed",
+            bottom: "20px",
+            right: "20px",
+            width: "64px",
+            height: "64px",
             background: `url(/book.png) no-repeat center center`,
             backgroundSize: "contain",
+            border: "none",
+            borderRadius: "8px",
+            cursor: "pointer",
+            zIndex: 1000,
+            boxShadow: "0 4px 8px rgba(0, 0, 0, 0.3)",
+            transition: "transform 0.3s ease",
+            transform: showInfoPanel ? "scale(1.1)" : "scale(1)",
           }}
           aria-label="Toggle Information Panel"
           title="Read Information"
@@ -318,16 +353,45 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
 
       {/* Information Panel */}
       {showInfoPanel && selectedArea && (
-        <div className="info-panel">
-          <h3>{selectedArea.name}</h3>
-          <div>
+        <div
+          className="info-panel"
+          style={{
+            position: "fixed",
+            bottom: "100px",
+            right: "20px",
+            width: "300px",
+            backgroundColor: "rgba(0, 0, 0, 0.85)",
+            color: "white",
+            padding: "20px",
+            borderRadius: "8px",
+            zIndex: 999,
+            boxShadow: "0 4px 15px rgba(0, 0, 0, 0.5)",
+            border: "1px solid rgba(255, 255, 255, 0.2)",
+            fontFamily: "Georgia, serif",
+            animation: "fadeIn 0.3s ease-in",
+          }}
+        >
+          <h3
+            style={{ margin: "0 0 10px 0", color: "#f5deb3", fontSize: "20px" }}
+          >
+            {selectedArea.name}
+          </h3>
+          <div style={{ fontSize: "16px", lineHeight: "1.5" }}>
             {selectedArea.description ||
               "No information available about this item."}
           </div>
           <button
             onClick={() => setShowInfoPanel(false)}
-            className="close-button"
-            aria-label="Close"
+            style={{
+              position: "absolute",
+              top: "10px",
+              right: "10px",
+              background: "transparent",
+              border: "none",
+              color: "white",
+              fontSize: "16px",
+              cursor: "pointer",
+            }}
           >
             ✕
           </button>
@@ -336,20 +400,46 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
 
       {/* ZOOMED IMAGE VIEW */}
       {isZooming && (
-        <div className="zoomed-overlay">
+        <div
+          className="zoomed-overlay"
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.9)",
+            zIndex: 9999,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: "20px",
+          }}
+        >
           {/* Back button in top-left corner using back.svg */}
           <button
             onClick={handleBackClick}
-            className="back-button"
             style={{
+              position: "absolute",
+              top: "20px",
+              left: "20px",
+              width: "40px",
+              height: "40px",
               background: `url(/back.svg) no-repeat center center`,
               backgroundSize: "contain",
+              border: "none",
+              backgroundColor: "transparent",
+              cursor: "pointer",
+              zIndex: 10000,
+              transition: "transform 0.2s ease",
+              filter: "invert(1)", // Make SVG white for visibility on dark background
             }}
             onMouseOver={(e) => {
-              e.currentTarget.classList.add("hover");
+              e.currentTarget.style.transform = "scale(1.1)";
             }}
             onMouseOut={(e) => {
-              e.currentTarget.classList.remove("hover");
+              e.currentTarget.style.transform = "scale(1)";
             }}
             aria-label="Return to Room"
             title="Return to Room"
@@ -357,7 +447,9 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
 
           {/* Show error message if image fails to load */}
           {imageError && (
-            <div className="image-error-message">{imageError}</div>
+            <div style={{ color: "red", margin: "20px", fontSize: "18px" }}>
+              {imageError}
+            </div>
           )}
 
           {/* Display the image */}
@@ -365,7 +457,11 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
             <img
               src={zoomedImage}
               alt="Detailed view"
-              className="zoomed-image"
+              style={{
+                maxWidth: "90%",
+                maxHeight: "80vh",
+                border: "2px solid white",
+              }}
               onError={handleImageError}
             />
           )}
@@ -377,10 +473,21 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
         className="debug-coordinates"
         style={{
           display: isZooming ? "none" : "block",
+          zIndex: 1000,
         }}
       >
         Image coords: {mousePosition.x}, {mousePosition.y}
       </div>
+
+      {/* Add CSS animations */}
+      <style>
+        {`
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}
+      </style>
     </div>
   );
 };

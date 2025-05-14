@@ -58,6 +58,7 @@ const App: React.FC = () => {
   const [currentPuzzle, setCurrentPuzzle] = useState<Puzzle | null>(null);
   const [output, setOutput] = useState<string | React.ReactNode>("");
   const editorRef = useRef<any>(null);
+  const [showSidebar, setShowSidebar] = useState<boolean>(true);
 
   // Path to your haunted room image - update this to the correct path
   const roomImagePath = "/haunted-room.jpg"; // Place this image in your public folder
@@ -279,10 +280,15 @@ const App: React.FC = () => {
     );
   };
 
+  // Toggle sidebar visibility in interactive view
+  const toggleSidebar = () => {
+    setShowSidebar(!showSidebar);
+  };
+
   // Render the app with view switching
   return (
     <div
-      className={`app-container ${activeView === View.CodeEditor ? "code-editor-view" : ""}`}
+      className={`app-container ${activeView === View.CodeEditor ? "code-editor-view" : "interactive-view"}`}
     >
       <div className="header">
         <h1>Code Editor / Interactive Room</h1>
@@ -332,11 +338,46 @@ const App: React.FC = () => {
           </div>
         </>
       ) : (
-        // Interactive Room View
-        <div className="interactive-room-container">
-          <h2>Escape Room Challenge</h2>
-          <p>Click on objects in the room to interact with them</p>
-          <ClickableImage imageSrc="/haunted-room.jpg" areas={clickableAreas} />
+        // Interactive Room View with Monaco editor sidebar
+        <div className="interactive-room-with-editor">
+          <div className="interactive-room-container">
+            <h2>Escape Room Challenge</h2>
+            <p>Click on objects in the room to interact with them</p>
+            <button className="sidebar-toggle" onClick={toggleSidebar}>
+              {showSidebar ? "Hide Editor" : "Show Editor"}
+            </button>
+            <ClickableImage
+              imageSrc="/haunted-room.jpg"
+              areas={clickableAreas}
+            />
+          </div>
+
+          {showSidebar && (
+            <div className="editor-sidebar">
+              <div className="sidebar-controls">
+                <LanguageSelector
+                  currentLanguage={currentLanguage}
+                  onLanguageChange={handleLanguageChange}
+                />
+                <button className="run-button" onClick={runCode}>
+                  Run Code
+                </button>
+              </div>
+
+              <div className="sidebar-editor">
+                <EditorView
+                  code={currentCode}
+                  language={currentLanguage}
+                  onChange={handleCodeChange}
+                  editorRef={editorRef}
+                />
+              </div>
+
+              <div className="sidebar-output">
+                <OutputView output={output} />
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -344,4 +385,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-
