@@ -664,7 +664,7 @@ html {
 
 .check-solution-button {
   position: absolute !important;
-  bottom: 15px !important;
+  bottom: 65px !important;
   right: 15px !important;
   z-index: 10 !important;
   padding: 8px 16px !important;
