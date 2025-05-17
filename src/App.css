@@ -146,7 +146,7 @@ html {
   border: 1px solid #ddd;
   border-radius: 4px;
   overflow: auto;
-  background-color: #f8f9fa;
+  background-color: #1e1e1e;
 }
 
 .output-header {
@@ -291,6 +291,10 @@ html {
   min-width: 200px;
 }
 
+#output {
+  color: #000;
+}
+
 .sidebar-controls {
   display: flex;
   padding: 10px;
@@ -339,7 +343,7 @@ html {
   border: 1px solid #ddd;
   border-radius: 4px;
   overflow: auto;
-  background-color: #f8f9fa;
+  background-color: #1e1e1e;
 }
 
 /* Ensure header for output is visible */

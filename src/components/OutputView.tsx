@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface OutputViewProps {
   output: string | React.ReactNode;
@@ -7,14 +7,13 @@ interface OutputViewProps {
 export const OutputView: React.FC<OutputViewProps> = ({ output }) => {
   return (
     <div className="output-container">
-      <div className="output-header">Output:</div>
+      <div id="output" className="output-header">
+        Output:
+      </div>
       <div className="output">
-        {typeof output === 'string' ? (
-          <pre>{output}</pre>
-        ) : (
-          output
-        )}
+        {typeof output === "string" ? <pre>{output}</pre> : output}
       </div>
     </div>
   );
-}; 
+};
+
