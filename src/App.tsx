@@ -167,6 +167,11 @@ const App: React.FC = () => {
     setCurrentCode(code);
   };
 
+  // Handle loading a code template from an interaction - FIXED
+  const handleLoadCodeTemplate = (template: string) => {
+    setCurrentCode(template);
+  };
+
   const extractFunctionName = (
     code: string,
     language: Language,
@@ -285,49 +290,85 @@ const App: React.FC = () => {
     // For example, you could show a modal, play a sound, etc.
   };
 
-  // Handle checking puzzle solution from the editor
+  // Handle checking puzzle solution from the editor with universal function name
   const handleCheckPuzzleSolution = (area: ClickableArea) => {
-    // Call the evaluation function in ClickableImage
     try {
-      const functionName = area.functionNames?.[currentLanguage];
-
-      if (!functionName) {
-        console.error(
-          `No function name provided for ${currentLanguage} in area ${area.id}`,
-        );
-        alert(
-          `Configuration error: No function name defined for ${currentLanguage} for this puzzle.`,
-        );
-        return;
-      }
-
       if (!currentCode || currentCode.trim() === "") {
         alert("Please write some code in the editor first.");
         return;
       }
 
-      const scriptToExecute = `
-        ${currentCode} // User's code from the editor
+      // Universal function name - same for all puzzles
+      const UNIVERSAL_FUNCTION_NAME = "solution";
 
-        let callable;
-        try {
-          callable = eval('${functionName}');
-        } catch (e) {
-          // callable will remain undefined, handled by the typeof check below.
+      console.log("Checking solution for puzzle:", area.name);
+      console.log("Expected value:", area.expectedValue);
+      console.log("Using universal function name:", UNIVERSAL_FUNCTION_NAME);
+
+      // Step 1: Execute user code to define functions
+      try {
+        eval(currentCode);
+      } catch (evalError: any) {
+        throw new Error(`Error in your code: ${evalError.message}`);
+      }
+
+      // Step 2: Try to call the universal function
+      let userFunction;
+      try {
+        userFunction = eval(UNIVERSAL_FUNCTION_NAME);
+      } catch (e) {
+        // Function might not be in global scope, try as a property of window
+        userFunction = (window as any)[UNIVERSAL_FUNCTION_NAME];
+      }
+
+      // Also try checking for language-specific function names as fallback
+      if (typeof userFunction !== "function") {
+        // For languages like Java/C# that use class methods
+        const languageSpecificChecks = [
+          "PuzzleClass.solution",
+          "PuzzleClass.Solution",
+          // Add any other patterns if needed
+        ];
+
+        for (const funcName of languageSpecificChecks) {
+          try {
+            userFunction = eval(funcName);
+            if (typeof userFunction === "function") {
+              console.log(`Found function using: ${funcName}`);
+              break;
+            }
+          } catch (e) {
+            // Continue to next check
+          }
         }
+      }
 
-        if (typeof callable !== 'function') {
-          throw new Error("Function or method '${functionName}' is not defined by your code, is not a function, or is not accessible. Please check your function's definition and name.");
-        }
-        
-        return callable();
-      `;
+      if (typeof userFunction !== "function") {
+        // Show current puzzle info in error
+        throw new Error(`Function 'solution()' is not defined for the ${area.name} puzzle.
 
-      const evalFunc = new Function(scriptToExecute);
-      const result = evalFunc();
-      console.log("Code evaluation result (from App.tsx check):", result);
+Current Puzzle: ${area.name}
+${area.description || "No description available"}
 
-      if (result === area.expectedValue) {
+Expected: You should define a function named exactly 'solution()' that returns ${area.expectedValue}
+
+Please check the puzzle template for the correct function signature.`);
+      }
+
+      // Step 3: Call the function and get result
+      const result = userFunction();
+      console.log("Function result:", result);
+
+      // Compare results (handle different types)
+      let isCorrect = false;
+      if (typeof result === typeof area.expectedValue) {
+        isCorrect = result === area.expectedValue;
+      } else {
+        // Try loose comparison for number/string conversions
+        isCorrect = result == area.expectedValue;
+      }
+
+      if (isCorrect) {
         // Mark as solved locally
         const newSolvedPuzzles = new Set(solvedPuzzles);
         newSolvedPuzzles.add(area.id);
@@ -339,18 +380,24 @@ const App: React.FC = () => {
           puzzleCompleted: true,
         });
 
-        alert(`Correct! You've solved the ${area.name} puzzle!`);
+        alert(`🎉 Excellent! You've solved the ${area.name} puzzle!
+
+Your solution: ${result}
+Expected: ${area.expectedValue}
+
+The door unlocks with a satisfying click!`);
       } else {
-        alert(`That doesn't seem to be the correct solution. Try again!`);
+        alert(`❌ Not the right answer for ${area.name}
+
+Your result: ${result} (${typeof result})
+Expected: ${area.expectedValue} (${typeof area.expectedValue})
+
+Try reviewing the puzzle description and hints.`);
       }
     } catch (error: any) {
+      console.error("Error in handleCheckPuzzleSolution:", error);
       alert(`Error checking your solution: ${error.message}`);
     }
-  };
-
-  // Handle loading a code template from an interaction
-  const handleLoadCodeTemplate = (template: string) => {
-    setCurrentCode(template);
   };
 
   // Toggle sidebar visibility in interactive view

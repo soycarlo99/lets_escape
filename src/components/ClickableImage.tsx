@@ -14,7 +14,7 @@ export interface ClickableImageProps {
   onPuzzleSolved?: (areaId: string) => void;
   onLoadCodeTemplate?: (template: string) => void;
   onSelectArea?: (area: ClickableArea) => void;
-  onLoadData?: (data: any, hint?: string) => void; // New callback for loading data
+  onLoadData?: (data: any, hint?: string) => void;
 }
 
 export const ClickableImage: React.FC<ClickableImageProps> = ({
@@ -184,7 +184,7 @@ ${typeof area.dataContent === "string" ? area.dataContent : JSON.stringify(area.
 // ${area.description || "Process the data array"}
 // ${area.processingHint || "Find the pattern in the numbers"}
 
-function processData() {
+function solution() {
     // Your code here
     // Example: return data.reduce((sum, num) => sum + num, 0);
     
@@ -198,7 +198,7 @@ function processData() {
 
 const encryptedMessage = "${area.dataContent}";
 
-function decryptMessage() {
+function solution() {
     // Your code here
     // Hint: Try different cipher methods
     
@@ -214,7 +214,7 @@ function decryptMessage() {
 
 const logEntries = ${JSON.stringify(streamData, null, 2)};
 
-function parseLogEntries() {
+function solution() {
     // Your code here
     // Example: Extract specific information from log entries
     
@@ -229,7 +229,7 @@ function parseLogEntries() {
 
 const jsonData = ${JSON.stringify(area.dataContent, null, 2)};
 
-function processJsonData() {
+function solution() {
     // Your code here
     
     return null; // Replace with your solution
@@ -242,7 +242,7 @@ function processJsonData() {
 
 const rawData = ${JSON.stringify(area.dataContent)};
 
-function processRawData() {
+function solution() {
     // Your code here
     
     return null; // Replace with your solution
@@ -303,7 +303,7 @@ function processRawData() {
     setShowDataPanel(false);
   };
 
-  // Check puzzle solution
+  // Check puzzle solution with universal function name
   const checkSolution = (area: ClickableArea) => {
     if (!currentCode || currentCode.trim() === "") {
       alert("Please write some code in the editor first.");
@@ -315,37 +315,96 @@ function processRawData() {
       return;
     }
 
-    if (!area.functionNames || !area.functionNames[currentLanguage]) {
-      console.error(
-        `No function name defined for ${currentLanguage} in area ${area.id}`,
-      );
-      alert("Configuration error: No function name defined for this puzzle.");
-      return;
-    }
+    // Universal function name - same for all puzzles
+    const UNIVERSAL_FUNCTION_NAME = "solution";
+
+    console.log("Checking puzzle:", area.name);
+    console.log("Expected value:", area.expectedValue);
+    console.log("Using universal function name:", UNIVERSAL_FUNCTION_NAME);
 
     try {
-      const functionName = area.functionNames[currentLanguage];
-      const scriptToExecute = `
-        ${currentCode}
-        
-        let callable;
-        try {
-          callable = eval('${functionName}');
-        } catch (e) {
-          // Function might be inside a class or scope
+      // Step 1: Execute user code to define functions
+      try {
+        eval(currentCode);
+      } catch (evalError: any) {
+        throw new Error(`Error in your code: ${evalError.message}`);
+      }
+
+      // Step 2: Try to call the universal function
+      let userFunction;
+      try {
+        userFunction = eval(UNIVERSAL_FUNCTION_NAME);
+      } catch (e) {
+        // Function might not be in global scope, try as a property of window
+        userFunction = (window as any)[UNIVERSAL_FUNCTION_NAME];
+      }
+
+      // Also try checking for language-specific function names as fallback
+      if (typeof userFunction !== "function") {
+        // For languages like Java/C# that use class methods
+        const languageSpecificChecks = [
+          "PuzzleClass.solution",
+          "PuzzleClass.Solution",
+          // Add any other patterns if needed
+        ];
+
+        for (const funcName of languageSpecificChecks) {
+          try {
+            userFunction = eval(funcName);
+            if (typeof userFunction === "function") {
+              console.log(`Found function using: ${funcName}`);
+              break;
+            }
+          } catch (e) {
+            // Continue to next check
+          }
         }
+      }
 
-        if (typeof callable !== 'function') {
-          throw new Error("Function '${functionName}' is not defined or accessible.");
-        }
-        
-        return callable();
-      `;
+      if (typeof userFunction !== "function") {
+        // Provide helpful error message
+        const availableFunctions = Object.getOwnPropertyNames(window)
+          .filter((name) => typeof (window as any)[name] === "function")
+          .filter((name) => !name.startsWith("_") && name.length < 20) // Filter out system functions
+          .join(", ");
 
-      const evalFunc = new Function(scriptToExecute);
-      const result = evalFunc();
+        throw new Error(`Function 'solution()' is not defined. 
 
-      if (result === area.expectedValue) {
+Expected: You should define a function named exactly 'solution()' (without parameters)
+
+Available functions: ${availableFunctions || "none"}
+
+Make sure your function is defined like this:
+- JavaScript/TypeScript: function solution() { ... }
+- Python: def solution(): ...
+- Java: public static returnType solution() { ... }
+- C#: public static ReturnType Solution() { ... }
+- C++: returnType solution() { ... }
+- Go: func solution() returnType { ... }
+- Rust: fn solution() -> ReturnType { ... }`);
+      }
+
+      // Step 3: Call the function and get result
+      const result = userFunction();
+      console.log("Function result:", result);
+      console.log("Expected:", area.expectedValue);
+      console.log(
+        "Types - Result:",
+        typeof result,
+        "Expected:",
+        typeof area.expectedValue,
+      );
+
+      // Compare results (handle different types)
+      let isCorrect = false;
+      if (typeof result === typeof area.expectedValue) {
+        isCorrect = result === area.expectedValue;
+      } else {
+        // Try loose comparison for number/string conversions
+        isCorrect = result == area.expectedValue;
+      }
+
+      if (isCorrect) {
         // Mark as solved
         const newCompletedPuzzles = new Set(completedPuzzles);
         newCompletedPuzzles.add(area.id);
@@ -356,12 +415,23 @@ function processRawData() {
           onPuzzleSolved(area.id);
         }
 
-        alert(`Correct! You've solved the ${area.name} puzzle!`);
+        alert(`🎉 Correct! You've solved the ${area.name} puzzle!
+
+Your answer: ${result}
+Expected: ${area.expectedValue}
+
+Great job! The puzzle is now complete.`);
         setShowInfoPanel(false);
       } else {
-        alert(`Incorrect. Expected: ${area.expectedValue}, Got: ${result}`);
+        alert(`❌ Not quite right. Try again!
+
+Your answer: ${result} (${typeof result})
+Expected: ${area.expectedValue} (${typeof area.expectedValue})
+
+Hint: Check your logic and make sure you're returning the right type of value.`);
       }
     } catch (error: any) {
+      console.error("Error in checkSolution:", error);
       alert(`Error checking your solution: ${error.message}`);
     }
   };
@@ -618,7 +688,7 @@ function processRawData() {
         />
       )}
 
-      {/* Info Panel */}
+      {/* Enhanced Info Panel */}
       {showInfoPanel && selectedArea && (
         <div
           className="info-panel"
@@ -635,6 +705,7 @@ function processRawData() {
             borderRadius: "10px",
             border: "2px solid #555",
             boxShadow: "0 8px 32px rgba(0, 0, 0, 0.7)",
+            zIndex: 999,
           }}
         >
           <button
@@ -680,66 +751,124 @@ function processRawData() {
             {selectedArea.description || "No description available."}
           </div>
 
-          {/* Show puzzle template for puzzle areas */}
-          {selectedArea.areaType === "puzzle" &&
-            selectedArea.codeTemplates &&
-            selectedArea.codeTemplates[currentLanguage] &&
-            !completedPuzzles.has(selectedArea.id) && (
+          {/* Enhanced puzzle info display */}
+          {selectedArea.areaType === "puzzle" && (
+            <div
+              style={{
+                marginTop: "15px",
+                padding: "15px",
+                background:
+                  "linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05))",
+                borderLeft: "4px solid #ffd700",
+                borderRadius: "8px",
+              }}
+            >
               <div
                 style={{
-                  marginTop: "15px",
-                  padding: "10px",
-                  background: "rgba(255, 255, 255, 0.1)",
-                  borderLeft: "3px solid #ffd700",
-                  borderRadius: "5px",
+                  marginBottom: "10px",
+                  color: "#ffd700",
+                  fontWeight: "bold",
+                  fontSize: "14px",
                 }}
               >
+                🎯 ACTIVE PUZZLE: {selectedArea.name.toUpperCase()}
+              </div>
+
+              <div
+                style={{
+                  marginBottom: "10px",
+                  fontSize: "13px",
+                  lineHeight: "1.4",
+                }}
+              >
+                {selectedArea.description}
+              </div>
+
+              {selectedArea.expectedValue !== undefined && (
                 <div
                   style={{
                     marginBottom: "10px",
-                    color: "#ffd700",
-                    fontWeight: "bold",
+                    padding: "8px",
+                    backgroundColor: "rgba(0, 0, 0, 0.3)",
+                    borderRadius: "4px",
+                    fontSize: "12px",
                   }}
                 >
-                  PUZZLE TEMPLATE ({currentLanguage.toUpperCase()}):
+                  <strong>🎲 Expected Result:</strong>{" "}
+                  {String(selectedArea.expectedValue)} (
+                  {typeof selectedArea.expectedValue})
                 </div>
-                <pre
-                  style={{
-                    margin: 0,
-                    fontSize: "11px",
-                    whiteSpace: "pre-wrap",
-                    backgroundColor: "rgba(0, 0, 0, 0.5)",
-                    padding: "10px",
-                    borderRadius: "3px",
-                    maxHeight: "150px",
-                    overflow: "auto",
-                  }}
-                >
-                  {selectedArea.codeTemplates[currentLanguage]}
-                </pre>
-                <button
-                  onClick={() => {
-                    if (onLoadCodeTemplate && selectedArea.codeTemplates) {
-                      onLoadCodeTemplate(
-                        selectedArea.codeTemplates[currentLanguage] || "",
-                      );
-                    }
-                  }}
+              )}
+
+              <div
+                style={{
+                  padding: "10px",
+                  backgroundColor: "rgba(0, 255, 0, 0.1)",
+                  borderRadius: "4px",
+                  fontSize: "12px",
+                  border: "1px solid rgba(0, 255, 0, 0.3)",
+                }}
+              >
+                <div style={{ fontWeight: "bold", marginBottom: "5px" }}>
+                  📝 FUNCTION NAME: solution()
+                </div>
+                <div>
+                  ✅ Always use function name:{" "}
+                  <code style={{ color: "#0f0" }}>solution()</code>
+                  <br />
+                  ✅ No parameters required
+                  <br />
+                  ✅ Must return the expected value
+                  <br />✅ Same function name for all languages
+                </div>
+              </div>
+
+              {selectedArea.codeTemplates &&
+                selectedArea.codeTemplates[currentLanguage] &&
+                !completedPuzzles.has(selectedArea.id) && (
+                  <div style={{ marginTop: "10px" }}>
+                    <button
+                      onClick={() => {
+                        if (onLoadCodeTemplate && selectedArea.codeTemplates) {
+                          onLoadCodeTemplate(
+                            selectedArea.codeTemplates[currentLanguage] || "",
+                          );
+                        }
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "10px",
+                        backgroundColor: "#ffd700",
+                        color: "black",
+                        border: "none",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        fontWeight: "bold",
+                        fontSize: "13px",
+                      }}
+                    >
+                      📁 Load Template for {currentLanguage.toUpperCase()}
+                    </button>
+                  </div>
+                )}
+
+              {completedPuzzles.has(selectedArea.id) && (
+                <div
                   style={{
                     marginTop: "10px",
-                    padding: "6px 12px",
-                    backgroundColor: "#ffd700",
-                    color: "black",
-                    border: "none",
-                    borderRadius: "4px",
-                    cursor: "pointer",
+                    padding: "10px",
+                    backgroundColor: "rgba(0, 255, 0, 0.1)",
+                    borderRadius: "6px",
+                    color: "#0f0",
+                    textAlign: "center",
                     fontWeight: "bold",
                   }}
                 >
-                  Load into Editor
-                </button>
-              </div>
-            )}
+                  ✅ PUZZLE COMPLETED! 🎉
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Show data content for info/data areas */}
           {(selectedArea.areaType === "info" ||
@@ -816,7 +945,7 @@ function processRawData() {
                   fontSize: "14px",
                 }}
               >
-                Check Solution
+                🔍 Check Solution
               </button>
             )}
         </div>

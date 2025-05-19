@@ -1,14 +1,16 @@
-// src/utils/templateGenerator.ts
+// src/utils/templateGenerator.ts - Updated with universal function name
+
 import { Language } from "../App";
 
 export interface PuzzleSpec {
-  name: string; // Function/method name (in camelCase)
+  name: string; // Original puzzle identifier (for internal use)
   description: string; // Description of the puzzle
   returnType: string; // Return type (e.g., "number", "string", "boolean")
   returnDescription: string; // Description of what to return
-  parameters?: Parameter[]; // Optional parameters
+  parameters?: Parameter[]; // Optional parameters (for UI display, not used in function)
   hints?: string[]; // Optional hints
   defaultReturnValue?: string; // Default return value for templates
+  puzzleId?: string; // Add puzzle identifier for templates
 }
 
 export interface Parameter {
@@ -17,97 +19,80 @@ export interface Parameter {
   description: string; // Parameter description
 }
 
+// UNIVERSAL FUNCTION NAME - All puzzles use this
+const UNIVERSAL_FUNCTION_NAME = "solution";
+
 /**
- * Converts camelCase to snake_case for Python and Rust
+ * Generate language-specific function names - now always returns the same universal name
  */
-function toSnakeCase(str: string): string {
-  return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+export function generateFunctionNames(
+  spec: PuzzleSpec,
+): Record<Language, string> {
+  // All languages use the same function name
+  const functionNames: Record<Language, string> = {
+    javascript: UNIVERSAL_FUNCTION_NAME,
+    typescript: UNIVERSAL_FUNCTION_NAME,
+    python: UNIVERSAL_FUNCTION_NAME,
+    java: `PuzzleClass.${UNIVERSAL_FUNCTION_NAME}`,
+    cpp: UNIVERSAL_FUNCTION_NAME,
+    csharp: `PuzzleClass.${UNIVERSAL_FUNCTION_NAME.charAt(0).toUpperCase() + UNIVERSAL_FUNCTION_NAME.slice(1)}`,
+    go: UNIVERSAL_FUNCTION_NAME,
+    rust: UNIVERSAL_FUNCTION_NAME,
+  };
+
+  return functionNames;
 }
 
 /**
- * Converts camelCase to PascalCase for C#
+ * Generate templates for all supported languages with universal function name
  */
-function toPascalCase(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1);
+export function generateTemplates(spec: PuzzleSpec): Record<Language, string> {
+  const templates: Record<Language, string> = {
+    javascript: generateJavaScriptTemplate(spec),
+    typescript: generateTypeScriptTemplate(spec),
+    python: generatePythonTemplate(spec),
+    java: generateJavaTemplate(spec),
+    cpp: generateCppTemplate(spec),
+    csharp: generateCSharpTemplate(spec),
+    go: generateGoTemplate(spec),
+    rust: generateRustTemplate(spec),
+  };
+
+  return templates;
 }
 
 /**
- * Generates appropriate type annotations for different languages
+ * Get puzzle header with clear identification
  */
-function getTypeAnnotation(type: string, language: Language): string {
-  switch (language) {
-    case "typescript":
-      return type;
-    case "python":
-      // Python uses type hints in comments or docstrings
-      return type.toLowerCase();
-    case "java":
-      // Convert JavaScript types to Java types
-      switch (type.toLowerCase()) {
-        case "number":
-          return "int";
-        case "string":
-          return "String";
-        case "boolean":
-          return "boolean";
-        default:
-          return type;
-      }
-    case "cpp":
-      // Convert JavaScript types to C++ types
-      switch (type.toLowerCase()) {
-        case "number":
-          return "int";
-        case "string":
-          return "std::string";
-        case "boolean":
-          return "bool";
-        default:
-          return type;
-      }
-    case "csharp":
-      // Convert JavaScript types to C# types
-      switch (type.toLowerCase()) {
-        case "number":
-          return "int";
-        case "string":
-          return "string";
-        case "boolean":
-          return "bool";
-        default:
-          return type;
-      }
-    case "go":
-      // Convert JavaScript types to Go types
-      switch (type.toLowerCase()) {
-        case "number":
-          return "int";
-        case "string":
-          return "string";
-        case "boolean":
-          return "bool";
-        default:
-          return type;
-      }
-    case "rust":
-      // Convert JavaScript types to Rust types
-      switch (type.toLowerCase()) {
-        case "number":
-          return "i32";
-        case "string":
-          return "String";
-        case "boolean":
-          return "bool";
-        default:
-          return type;
-      }
-    default:
-      return type;
+function getPuzzleHeader(spec: PuzzleSpec): string {
+  const headerLines = [
+    "=".repeat(50),
+    `PUZZLE: ${spec.name.toUpperCase()}`,
+    "=".repeat(50),
+    spec.description,
+    "",
+  ];
+
+  if (spec.hints && spec.hints.length > 0) {
+    headerLines.push("HINTS:");
+    spec.hints.forEach((hint, index) => {
+      headerLines.push(`  ${index + 1}. ${hint}`);
+    });
+    headerLines.push("");
   }
+
+  headerLines.push(
+    `Expected Return: ${spec.returnType} - ${spec.returnDescription}`,
+    "",
+    "IMPORTANT: Your function must be named 'solution()' exactly!",
+    "=".repeat(50),
+  );
+
+  return headerLines.join("\n");
 }
 
 /**
- * Get the default return value for the given language and type
+ * Get default return value for the given language and type
  */
 function getDefaultReturnValue(
   type: string,
@@ -147,257 +132,273 @@ function getDefaultReturnValue(
 }
 
 /**
- * Generate language-specific function names
- */
-export function generateFunctionNames(
-  spec: PuzzleSpec,
-): Record<Language, string> {
-  const functionNames: Record<Language, string> = {
-    javascript: spec.name,
-    typescript: spec.name,
-    python: toSnakeCase(spec.name),
-    java: `PuzzleClass.${spec.name}`,
-    cpp: spec.name,
-    csharp: `PuzzleClass.${toPascalCase(spec.name)}`,
-    go: spec.name,
-    rust: toSnakeCase(spec.name),
-  };
-
-  return functionNames;
-}
-
-/**
- * Generate templates for all supported languages
- */
-export function generateTemplates(spec: PuzzleSpec): Record<Language, string> {
-  const templates: Record<Language, string> = {
-    javascript: generateJavaScriptTemplate(spec),
-    typescript: generateTypeScriptTemplate(spec),
-    python: generatePythonTemplate(spec),
-    java: generateJavaTemplate(spec),
-    cpp: generateCppTemplate(spec),
-    csharp: generateCSharpTemplate(spec),
-    go: generateGoTemplate(spec),
-    rust: generateRustTemplate(spec),
-  };
-
-  return templates;
-}
-
-/**
- * Generate JavaScript template
+ * Generate JavaScript template with universal function name
  */
 function generateJavaScriptTemplate(spec: PuzzleSpec): string {
-  const params = (spec.parameters || []).map((p) => p.name).join(", ");
+  const header = getPuzzleHeader(spec);
 
-  const paramsDoc = (spec.parameters || [])
-    .map((p) => ` * @param {${p.type}} ${p.name} - ${p.description}`)
-    .join("\n");
+  return `/*
+${header}
+*/
 
-  const hintsDoc = (spec.hints || [])
-    .map((hint) => ` * Hint: ${hint}`)
-    .join("\n");
+function ${UNIVERSAL_FUNCTION_NAME}() {
+    // Your solution code goes here
+    // Remember: This function should return ${spec.returnType}
+    
+    return ${spec.defaultReturnValue || getDefaultReturnValue(spec.returnType, "javascript")}; // Replace with your solution
+}
 
-  const returnDoc = ` * @returns {${spec.returnType}} ${spec.returnDescription}`;
-
-  return `/**
- * ${spec.description}
-${paramsDoc ? paramsDoc + "\n" : ""}${hintsDoc ? hintsDoc + "\n" : ""}${returnDoc}
- */
-function ${spec.name}(${params}) {
-  // Your code here
-  
-  return ${spec.defaultReturnValue || getDefaultReturnValue(spec.returnType, "javascript")}; // Replace with your solution
-}`;
+// Test your function (optional - you can run this to see if it works)
+// console.log("Result:", ${UNIVERSAL_FUNCTION_NAME}());`;
 }
 
 /**
- * Generate TypeScript template
+ * Generate TypeScript template with universal function name
  */
 function generateTypeScriptTemplate(spec: PuzzleSpec): string {
-  const params = (spec.parameters || [])
-    .map((p) => `${p.name}: ${getTypeAnnotation(p.type, "typescript")}`)
-    .join(", ");
+  const header = getPuzzleHeader(spec);
+  const returnType = getTypeAnnotation(spec.returnType, "typescript");
 
-  const paramsDoc = (spec.parameters || [])
-    .map((p) => ` * @param {${p.type}} ${p.name} - ${p.description}`)
-    .join("\n");
+  return `/*
+${header}
+*/
 
-  const hintsDoc = (spec.hints || [])
-    .map((hint) => ` * Hint: ${hint}`)
-    .join("\n");
+function ${UNIVERSAL_FUNCTION_NAME}(): ${returnType} {
+    // Your solution code goes here
+    // Remember: This function should return ${spec.returnType}
+    
+    return ${spec.defaultReturnValue || getDefaultReturnValue(spec.returnType, "typescript")}; // Replace with your solution
+}
 
-  const returnDoc = ` * @returns {${spec.returnType}} ${spec.returnDescription}`;
-
-  return `/**
- * ${spec.description}
-${paramsDoc ? paramsDoc + "\n" : ""}${hintsDoc ? hintsDoc + "\n" : ""}${returnDoc}
- */
-function ${spec.name}(${params}): ${getTypeAnnotation(spec.returnType, "typescript")} {
-  // Your code here
-  
-  return ${spec.defaultReturnValue || getDefaultReturnValue(spec.returnType, "typescript")}; // Replace with your solution
-}`;
+// Test your function (optional - you can run this to see if it works)
+// console.log("Result:", ${UNIVERSAL_FUNCTION_NAME}());`;
 }
 
 /**
- * Generate Python template
+ * Generate Python template with universal function name
  */
 function generatePythonTemplate(spec: PuzzleSpec): string {
-  const funcName = toSnakeCase(spec.name);
-
-  const params = (spec.parameters || []).map((p) => p.name).join(", ");
-
-  const hintsDoc = (spec.hints || [])
-    .map((hint) => `    Hint: ${hint}`)
-    .join("\n");
+  const header = getPuzzleHeader(spec);
 
   return `"""
-${spec.description}
-
-${(spec.parameters || [])
-  .map(
-    (p) => `Args:
-    ${p.name}: ${p.description}`,
-  )
-  .join("\n")}
-${hintsDoc ? "\n" + hintsDoc : ""}
-
-Returns:
-    ${getTypeAnnotation(spec.returnType, "python")}: ${spec.returnDescription}
+${header}
 """
-def ${funcName}(${params}):
-    # Your code here
+
+def ${UNIVERSAL_FUNCTION_NAME}():
+    # Your solution code goes here
+    # Remember: This function should return ${spec.returnType}
     
-    return ${spec.defaultReturnValue || getDefaultReturnValue(spec.returnType, "python")}  # Replace with your solution`;
+    return ${spec.defaultReturnValue || getDefaultReturnValue(spec.returnType, "python")}  # Replace with your solution
+
+# Test your function (optional - you can run this to see if it works)
+# print("Result:", ${UNIVERSAL_FUNCTION_NAME}())`;
 }
 
 /**
- * Generate Java template
+ * Generate Java template with universal function name
  */
 function generateJavaTemplate(spec: PuzzleSpec): string {
-  const params = (spec.parameters || [])
-    .map((p) => `${getTypeAnnotation(p.type, "java")} ${p.name}`)
-    .join(", ");
+  const header = getPuzzleHeader(spec);
+  const returnType = getTypeAnnotation(spec.returnType, "java");
 
-  const hintsDoc = (spec.hints || [])
-    .map((hint) => ` * Hint: ${hint}`)
-    .join("\n");
+  return `/*
+${header}
+*/
 
-  return `/**
- * ${spec.description}
-${(spec.parameters || []).map((p) => ` * @param ${p.name} ${p.description}`).join("\n")}
-${hintsDoc ? hintsDoc + "\n" : ""} * @return ${spec.returnDescription}
- */
 public class PuzzleClass {
-    public static ${getTypeAnnotation(spec.returnType, "java")} ${spec.name}(${params}) {
-        // Your code here
+    public static ${returnType} ${UNIVERSAL_FUNCTION_NAME}() {
+        // Your solution code goes here
+        // Remember: This function should return ${spec.returnType}
         
         return ${spec.defaultReturnValue || getDefaultReturnValue(spec.returnType, "java")}; // Replace with your solution
     }
+    
+    // Test method (optional)
+    // public static void main(String[] args) {
+    //     System.out.println("Result: " + ${UNIVERSAL_FUNCTION_NAME}());
+    // }
 }`;
 }
 
 /**
- * Generate C++ template
+ * Generate C++ template with universal function name
  */
 function generateCppTemplate(spec: PuzzleSpec): string {
-  const params = (spec.parameters || [])
-    .map((p) => `${getTypeAnnotation(p.type, "cpp")} ${p.name}`)
-    .join(", ");
+  const header = getPuzzleHeader(spec);
+  const returnType = getTypeAnnotation(spec.returnType, "cpp");
 
-  const hintsDoc = (spec.hints || [])
-    .map((hint) => ` * Hint: ${hint}`)
-    .join("\n");
+  return `/*
+${header}
+*/
 
-  return `/**
- * ${spec.description}
-${(spec.parameters || []).map((p) => ` * @param ${p.name} ${p.description}`).join("\n")}
-${hintsDoc ? hintsDoc + "\n" : ""} * @return ${spec.returnDescription}
- */
-${getTypeAnnotation(spec.returnType, "cpp")} ${spec.name}(${params}) {
-    // Your code here
+#include <iostream>
+${spec.returnType.toLowerCase() === "string" ? "#include <string>" : ""}
+
+${returnType} ${UNIVERSAL_FUNCTION_NAME}() {
+    // Your solution code goes here
+    // Remember: This function should return ${spec.returnType}
     
     return ${spec.defaultReturnValue || getDefaultReturnValue(spec.returnType, "cpp")}; // Replace with your solution
-}`;
+}
+
+// Test function (optional)
+// int main() {
+//     auto result = ${UNIVERSAL_FUNCTION_NAME}();
+//     std::cout << "Result: " << result << std::endl;
+//     return 0;
+// }`;
 }
 
 /**
- * Generate C# template
+ * Generate C# template with universal function name
  */
 function generateCSharpTemplate(spec: PuzzleSpec): string {
-  const funcName = toPascalCase(spec.name);
+  const header = getPuzzleHeader(spec);
+  const returnType = getTypeAnnotation(spec.returnType, "csharp");
+  const funcName =
+    UNIVERSAL_FUNCTION_NAME.charAt(0).toUpperCase() +
+    UNIVERSAL_FUNCTION_NAME.slice(1);
 
-  const params = (spec.parameters || [])
-    .map((p) => `${getTypeAnnotation(p.type, "csharp")} ${p.name}`)
-    .join(", ");
+  return `/*
+${header}
+*/
 
-  const hintsDoc = (spec.hints || [])
-    .map((hint) => ` * Hint: ${hint}`)
-    .join("\n");
+using System;
 
-  return `/**
- * ${spec.description}
-${(spec.parameters || []).map((p) => ` * @param ${p.name} ${p.description}`).join("\n")}
-${hintsDoc ? hintsDoc + "\n" : ""} * @return ${spec.returnDescription}
- */
 public class PuzzleClass {
-    public static ${getTypeAnnotation(spec.returnType, "csharp")} ${funcName}(${params}) {
-        // Your code here
+    public static ${returnType} ${funcName}() {
+        // Your solution code goes here
+        // Remember: This function should return ${spec.returnType}
         
         return ${spec.defaultReturnValue || getDefaultReturnValue(spec.returnType, "csharp")}; // Replace with your solution
     }
+    
+    // Test method (optional)
+    // public static void Main() {
+    //     Console.WriteLine("Result: " + ${funcName}());
+    // }
 }`;
 }
 
 /**
- * Generate Go template
+ * Generate Go template with universal function name
  */
 function generateGoTemplate(spec: PuzzleSpec): string {
-  const params = (spec.parameters || [])
-    .map((p) => `${p.name} ${getTypeAnnotation(p.type, "go")}`)
-    .join(", ");
+  const header = getPuzzleHeader(spec);
+  const returnType = getTypeAnnotation(spec.returnType, "go");
 
-  const hintsDoc = (spec.hints || [])
-    .map((hint) => ` * Hint: ${hint}`)
-    .join("\n");
+  return `/*
+${header}
+*/
 
-  return `/**
- * ${spec.description}
-${(spec.parameters || []).map((p) => ` * @param ${p.name} ${p.description}`).join("\n")}
-${hintsDoc ? hintsDoc + "\n" : ""} * @return ${spec.returnDescription}
- */
 package main
 
-func ${spec.name}(${params}) ${getTypeAnnotation(spec.returnType, "go")} {
-    // Your code here
+import "fmt"
+
+func ${UNIVERSAL_FUNCTION_NAME}() ${returnType} {
+    // Your solution code goes here
+    // Remember: This function should return ${spec.returnType}
     
     return ${spec.defaultReturnValue || getDefaultReturnValue(spec.returnType, "go")} // Replace with your solution
-}`;
+}
+
+// Test function (optional)
+// func main() {
+//     result := ${UNIVERSAL_FUNCTION_NAME}()
+//     fmt.Println("Result:", result)
+// }`;
 }
 
 /**
- * Generate Rust template
+ * Generate Rust template with universal function name
  */
 function generateRustTemplate(spec: PuzzleSpec): string {
-  const funcName = toSnakeCase(spec.name);
+  const header = getPuzzleHeader(spec);
+  const returnType = getTypeAnnotation(spec.returnType, "rust");
 
-  const params = (spec.parameters || [])
-    .map((p) => `${p.name}: ${getTypeAnnotation(p.type, "rust")}`)
-    .join(", ");
+  return `/*
+${header}
+*/
 
-  const hintsDoc = (spec.hints || [])
-    .map((hint) => ` * Hint: ${hint}`)
-    .join("\n");
-
-  return `/**
- * ${spec.description}
-${(spec.parameters || []).map((p) => ` * @param ${p.name} ${p.description}`).join("\n")}
-${hintsDoc ? hintsDoc + "\n" : ""} * @return ${spec.returnDescription}
- */
-fn ${funcName}(${params}) -> ${getTypeAnnotation(spec.returnType, "rust")} {
-    // Your code here
+fn ${UNIVERSAL_FUNCTION_NAME}() -> ${returnType} {
+    // Your solution code goes here
+    // Remember: This function should return ${spec.returnType}
     
-    return ${spec.defaultReturnValue || getDefaultReturnValue(spec.returnType, "rust")}; // Replace with your solution
-}`;
+    ${spec.defaultReturnValue || getDefaultReturnValue(spec.returnType, "rust")} // Replace with your solution
+}
+
+// Test function (optional)
+// fn main() {
+//     let result = ${UNIVERSAL_FUNCTION_NAME}();
+//     println!("Result: {:?}", result);
+// }`;
+}
+
+/**
+ * Generate appropriate type annotations for different languages
+ */
+function getTypeAnnotation(type: string, language: Language): string {
+  switch (language) {
+    case "typescript":
+      return type;
+    case "python":
+      return type.toLowerCase();
+    case "java":
+      switch (type.toLowerCase()) {
+        case "number":
+          return "int";
+        case "string":
+          return "String";
+        case "boolean":
+          return "boolean";
+        default:
+          return type;
+      }
+    case "cpp":
+      switch (type.toLowerCase()) {
+        case "number":
+          return "int";
+        case "string":
+          return "std::string";
+        case "boolean":
+          return "bool";
+        default:
+          return type;
+      }
+    case "csharp":
+      switch (type.toLowerCase()) {
+        case "number":
+          return "int";
+        case "string":
+          return "string";
+        case "boolean":
+          return "bool";
+        default:
+          return type;
+      }
+    case "go":
+      switch (type.toLowerCase()) {
+        case "number":
+          return "int";
+        case "string":
+          return "string";
+        case "boolean":
+          return "bool";
+        default:
+          return type;
+      }
+    case "rust":
+      switch (type.toLowerCase()) {
+        case "number":
+          return "i32";
+        case "string":
+          return "String";
+        case "boolean":
+          return "bool";
+        default:
+          return type;
+      }
+    default:
+      return type;
+  }
 }
