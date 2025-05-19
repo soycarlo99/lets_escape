@@ -1,42 +1,52 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ClickableArea } from "../types/clickableAreas";
+import { ClickableArea, getAreaAction } from "../types/clickableAreas";
 import { Language } from "../App";
 import {
   generateTemplates,
   generateFunctionNames,
 } from "../utils/templateGenerator";
 
-// Update the onPuzzleSolved callback to also update the selected area in the parent component
 export interface ClickableImageProps {
   imageSrc?: string;
-  areas?: ClickableArea[]; // Allow passing areas as props (optional)
-  currentCode?: string; // Current code from the editor
-  currentLanguage?: Language; // Current selected language
-  onPuzzleSolved?: (areaId: string) => void; // Callback when puzzle is solved
-  onLoadCodeTemplate?: (template: string) => void; // Callback to load code template
-  onSelectArea?: (area: ClickableArea) => void; // Callback when an area is selected
+  areas?: ClickableArea[];
+  currentCode?: string;
+  currentLanguage?: Language;
+  onPuzzleSolved?: (areaId: string) => void;
+  onLoadCodeTemplate?: (template: string) => void;
+  onSelectArea?: (area: ClickableArea) => void;
+  onLoadData?: (data: any, hint?: string) => void; // New callback for loading data
 }
 
 export const ClickableImage: React.FC<ClickableImageProps> = ({
   imageSrc,
-  areas = [], // Default to empty array if not provided
-  currentCode = "", // Default to empty string
-  currentLanguage = "javascript", // Default to JavaScript
+  areas = [],
+  currentCode = "",
+  currentLanguage = "javascript",
   onPuzzleSolved,
   onLoadCodeTemplate,
   onSelectArea,
+  onLoadData,
 }) => {
-  // Track which area is being hovered
+  // Enhanced state management
   const [hoveredAreaId, setHoveredAreaId] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
-  const [isZooming, setIsZooming] = useState(false);
+
+  // Photo viewing state
+  const [currentImage, setCurrentImage] = useState<string | null>(null);
+  const [currentAreas, setCurrentAreas] = useState<ClickableArea[]>(areas);
+  const [imageStack, setImageStack] = useState<
+    Array<{ image: string; areas: ClickableArea[] }>
+  >([]);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+
+  // Panel states
   const [selectedArea, setSelectedArea] = useState<ClickableArea | null>(null);
   const [showInfoPanel, setShowInfoPanel] = useState(false);
+  const [showDataPanel, setShowDataPanel] = useState(false);
 
-  // Track completed puzzles locally
+  // Completed puzzles tracking
   const [completedPuzzles, setCompletedPuzzles] = useState<Set<string>>(
     new Set(),
   );
@@ -44,60 +54,256 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // Set the actual dimensions of your image here
+  // Image dimensions
   const originalWidth = 1920;
   const originalHeight = 1080;
 
-  // Function to evaluate code and check if it produces the expected value
-  const evaluateCode = (code: string, area: ClickableArea): any => {
-    const functionName = area.functionNames?.[currentLanguage];
+  // Handle intelligent area clicks
+  const handleAreaClick = (area: ClickableArea) => {
+    console.log(`Clicked on ${area.areaType} area: ${area.id}`);
 
-    if (!functionName) {
-      console.error(
-        `No function name provided for ${currentLanguage} in area ${area.id}`,
-      );
-      // Optionally, alert the user or provide more direct feedback here if this configuration issue occurs
-      return null;
+    // Set the selected area
+    setSelectedArea(area);
+
+    // Notify parent component
+    if (onSelectArea) {
+      onSelectArea(area);
     }
 
-    try {
-      // The script to be executed by new Function.
-      // It includes the user's code and then attempts to call the specified function.
-      const scriptToExecute = `
-        ${code} // User's code is injected here.
-
-        // After user's code, try to resolve the functionName to an actual function.
-        // 'eval' here is used to resolve the function path (e.g., "myFunction" or "MyClass.myStaticMethod")
-        // within the scope of this 'new Function' where 'code' has been executed.
-        let callable;
-        try {
-          callable = eval('${functionName}');
-        } catch (e) {
-          // If eval throws (e.g., path doesn't exist or intermediate part is not an object),
-          // callable will remain undefined, and the typeof check below will handle it.
-        }
-
-        if (typeof callable !== 'function') {
-          throw new Error("Function or method '${functionName}' is not defined by your code, is not a function, or is not accessible with the specified path. Please check your function's definition and name.");
-        }
-        
-        return callable(); // Call the resolved function/method.
-      `;
-
-      const evalFunc = new Function(scriptToExecute);
-      return evalFunc();
-    } catch (error) {
-      // This catches errors from 'new Function' compilation or runtime errors from 'scriptToExecute'.
-      console.error(
-        `Error during code evaluation for function '${functionName}':`,
-        error,
-      );
-      // The checkSolution function, which calls this, will alert the user.
-      return null;
+    // Handle different area types
+    switch (area.areaType) {
+      case "photo":
+        handlePhotoArea(area);
+        break;
+      case "puzzle":
+        handlePuzzleArea(area);
+        break;
+      case "info":
+        handleInfoArea(area);
+        break;
+      case "data":
+        handleDataArea(area);
+        break;
+      default:
+        // Legacy support
+        handleLegacyArea(area);
     }
   };
 
-  // Function to check if the solution is correct
+  // Handle photo areas with smooth transitions and nested areas
+  const handlePhotoArea = (area: ClickableArea) => {
+    if (!area.detailImage) {
+      alert(`${area.name} doesn't have a detailed view available.`);
+      return;
+    }
+
+    // Start transition
+    setIsTransitioning(true);
+    setImageError(null);
+
+    // Save current state to stack
+    const currentState = {
+      image: currentImage || imageSrc || "/haunted-room.jpg",
+      areas: currentAreas,
+    };
+    setImageStack((prev) => [...prev, currentState]);
+
+    // Transition to new image
+    setTimeout(() => {
+      setCurrentImage(area.detailImage!);
+      setCurrentAreas(area.nestedAreas || []);
+      setIsTransitioning(false);
+    }, 500); // Smooth fade transition
+
+    // Show info panel with description
+    setShowInfoPanel(true);
+  };
+
+  // Handle puzzle areas - load into editor
+  const handlePuzzleArea = (area: ClickableArea) => {
+    if (!area.puzzleSpec) {
+      alert(`${area.name} doesn't have a puzzle to solve.`);
+      return;
+    }
+
+    // Generate templates and function names
+    if (area.puzzleSpec) {
+      area.codeTemplates = generateTemplates(area.puzzleSpec);
+      area.functionNames = generateFunctionNames(area.puzzleSpec);
+    }
+
+    // Load the template into the editor
+    if (
+      area.codeTemplates &&
+      area.codeTemplates[currentLanguage] &&
+      onLoadCodeTemplate
+    ) {
+      onLoadCodeTemplate(area.codeTemplates[currentLanguage]);
+    }
+
+    // Show info panel with puzzle description
+    setShowInfoPanel(true);
+  };
+
+  // Handle info areas - display information
+  const handleInfoArea = (area: ClickableArea) => {
+    setShowInfoPanel(true);
+
+    // If the area has data content, also provide it to the parent
+    if (area.dataContent && onLoadData) {
+      const comment = `/*
+${area.name}
+${area.description || ""}
+${area.processingHint ? "\nHint: " + area.processingHint : ""}
+
+Data:
+${typeof area.dataContent === "string" ? area.dataContent : JSON.stringify(area.dataContent, null, 2)}
+*/
+
+// Your code here
+`;
+      onLoadData(comment, area.processingHint);
+    }
+  };
+
+  // Handle data areas - provide data for processing
+  const handleDataArea = (area: ClickableArea) => {
+    setShowDataPanel(true);
+    setShowInfoPanel(true);
+
+    if (area.dataContent && onLoadData) {
+      // Create a template with the data embedded
+      let dataString = "";
+      let templateCode = "";
+
+      switch (area.dataType) {
+        case "array":
+          dataString = `const data = ${JSON.stringify(area.dataContent)};`;
+          templateCode = `${dataString}
+
+// ${area.description || "Process the data array"}
+// ${area.processingHint || "Find the pattern in the numbers"}
+
+function processData() {
+    // Your code here
+    // Example: return data.reduce((sum, num) => sum + num, 0);
+    
+    return 0; // Replace with your solution
+}`;
+          break;
+
+        case "encrypted":
+          templateCode = `// ${area.description || "Decrypt the message"}
+// ${area.processingHint || "Use the appropriate decryption method"}
+
+const encryptedMessage = "${area.dataContent}";
+
+function decryptMessage() {
+    // Your code here
+    // Hint: Try different cipher methods
+    
+    return ""; // Replace with decrypted message
+}`;
+          break;
+
+        case "stream":
+          if (typeof area.dataContent === "object" && area.dataContent.data) {
+            const streamData = area.dataContent.data;
+            templateCode = `// ${area.description || "Process the data stream"}
+// ${area.processingHint || "Parse the log entries"}
+
+const logEntries = ${JSON.stringify(streamData, null, 2)};
+
+function parseLogEntries() {
+    // Your code here
+    // Example: Extract specific information from log entries
+    
+    return null; // Replace with your solution
+}`;
+          }
+          break;
+
+        case "json":
+          templateCode = `// ${area.description || "Process the JSON data"}
+// ${area.processingHint || "Extract the required information"}
+
+const jsonData = ${JSON.stringify(area.dataContent, null, 2)};
+
+function processJsonData() {
+    // Your code here
+    
+    return null; // Replace with your solution
+}`;
+          break;
+
+        default:
+          templateCode = `// ${area.description || "Process the data"}
+// ${area.processingHint || ""}
+
+const rawData = ${JSON.stringify(area.dataContent)};
+
+function processRawData() {
+    // Your code here
+    
+    return null; // Replace with your solution
+}`;
+      }
+
+      if (onLoadCodeTemplate) {
+        onLoadCodeTemplate(templateCode);
+      }
+    }
+  };
+
+  // Handle legacy areas (backward compatibility)
+  const handleLegacyArea = (area: ClickableArea) => {
+    switch (area.action) {
+      case "mirror":
+        if (area.detailImage) {
+          handlePhotoArea(area);
+        } else {
+          alert(
+            `You examine the ${area.name}. It reflects a distorted image of yourself.`,
+          );
+        }
+        break;
+      case "door":
+        if (completedPuzzles.has(area.id)) {
+          alert(`The ${area.name} unlocks and swings open!`);
+        } else {
+          handlePuzzleArea(area);
+        }
+        break;
+      default:
+        alert(getAreaAction(area));
+    }
+  };
+
+  // Handle going back to previous image/area
+  const goBack = () => {
+    if (imageStack.length === 0) return;
+
+    setIsTransitioning(true);
+
+    const previousState = imageStack[imageStack.length - 1];
+    setImageStack((prev) => prev.slice(0, -1));
+
+    setTimeout(() => {
+      setCurrentImage(
+        previousState.image === (imageSrc || "/haunted-room.jpg")
+          ? null
+          : previousState.image,
+      );
+      setCurrentAreas(previousState.areas);
+      setIsTransitioning(false);
+    }, 500);
+
+    // Close panels when going back
+    setShowInfoPanel(false);
+    setShowDataPanel(false);
+  };
+
+  // Check puzzle solution
   const checkSolution = (area: ClickableArea) => {
     if (!currentCode || currentCode.trim() === "") {
       alert("Please write some code in the editor first.");
@@ -109,42 +315,58 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
       return;
     }
 
-    // Make sure we have function names for this area
     if (!area.functionNames || !area.functionNames[currentLanguage]) {
       console.error(
         `No function name defined for ${currentLanguage} in area ${area.id}`,
       );
-      alert(
-        "Error: Could not determine the function to check. Please try again or reload the page.",
-      );
+      alert("Configuration error: No function name defined for this puzzle.");
       return;
     }
 
     try {
-      const result = evaluateCode(currentCode, area);
-      console.log("Code evaluation result:", result);
+      const functionName = area.functionNames[currentLanguage];
+      const scriptToExecute = `
+        ${currentCode}
+        
+        let callable;
+        try {
+          callable = eval('${functionName}');
+        } catch (e) {
+          // Function might be inside a class or scope
+        }
+
+        if (typeof callable !== 'function') {
+          throw new Error("Function '${functionName}' is not defined or accessible.");
+        }
+        
+        return callable();
+      `;
+
+      const evalFunc = new Function(scriptToExecute);
+      const result = evalFunc();
 
       if (result === area.expectedValue) {
-        // Mark as solved locally
+        // Mark as solved
         const newCompletedPuzzles = new Set(completedPuzzles);
         newCompletedPuzzles.add(area.id);
         setCompletedPuzzles(newCompletedPuzzles);
 
-        // Notify parent component
+        // Notify parent
         if (onPuzzleSolved) {
           onPuzzleSolved(area.id);
         }
 
         alert(`Correct! You've solved the ${area.name} puzzle!`);
+        setShowInfoPanel(false);
       } else {
-        alert(`That doesn't seem to be the correct solution. Try again!`);
+        alert(`Incorrect. Expected: ${area.expectedValue}, Got: ${result}`);
       }
     } catch (error: any) {
       alert(`Error checking your solution: ${error.message}`);
     }
   };
 
-  // Handle mouse movement to track coordinates
+  // Mouse move handler
   const handleMouseMove = (e: React.MouseEvent<HTMLImageElement>) => {
     if (!imgRef.current) return;
 
@@ -152,7 +374,6 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Convert screen coordinates to original image coordinates
     const scaleX = originalWidth / rect.width;
     const scaleY = originalHeight / rect.height;
 
@@ -162,65 +383,27 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
     setMousePosition({ x: originalX, y: originalY });
   };
 
-  // Generate templates for areas with puzzle specs based on current language
-  useEffect(() => {
-    // Process areas with puzzle specs
-    areas.forEach((area) => {
-      if (area.puzzleSpec) {
-        // Generate templates and function names when needed
-        area.codeTemplates = generateTemplates(area.puzzleSpec);
-        area.functionNames = generateFunctionNames(area.puzzleSpec);
-      }
-    });
-
-    // Re-select the current area to refresh its data if needed
-    if (selectedArea) {
-      const updatedArea = areas.find((a) => a.id === selectedArea.id);
-      if (updatedArea) {
-        setSelectedArea(updatedArea);
-      }
-    }
-  }, [areas, currentLanguage]);
-
-  // Update dimensions when image loads or resizes
+  // Update dimensions when image loads
   useEffect(() => {
     if (!imgRef.current) return;
 
-    // Function to update dimensions based on the actual rendered image
     const updateDimensions = () => {
       if (imgRef.current) {
         const rect = imgRef.current.getBoundingClientRect();
-        setDimensions({
-          width: rect.width,
-          height: rect.height,
-        });
+        setDimensions({ width: rect.width, height: rect.height });
       }
     };
 
-    // Initial update when image loads
     imgRef.current.onload = updateDimensions;
-
-    // Handle already loaded images
     if (imgRef.current.complete) {
       updateDimensions();
     }
 
-    // Use ResizeObserver for more accurate size tracking than window.resize
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.target === imgRef.current) {
-          updateDimensions();
-        }
-      }
-    });
-
-    // Start observing the image
+    const resizeObserver = new ResizeObserver(updateDimensions);
     resizeObserver.observe(imgRef.current);
 
-    // Also listen for window resize events as a fallback
     window.addEventListener("resize", updateDimensions);
 
-    // Cleanup
     return () => {
       if (imgRef.current) {
         resizeObserver.unobserve(imgRef.current);
@@ -228,203 +411,110 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
       resizeObserver.disconnect();
       window.removeEventListener("resize", updateDimensions);
     };
-  }, []);
+  }, [currentImage]);
 
-  // Function to handle going back from zoomed view
-  const handleBackClick = () => {
-    setIsZooming(false);
-    // Add a timeout to clear the image only after the fade out animation completes
-    setTimeout(() => {
-      setZoomedImage(null);
-      setImageError(null); // Reset any error state
-    }, 500); // This should match the transition duration in CSS
-  };
-
-  // Handle image loading error
-  const handleImageError = (
-    e: React.SyntheticEvent<HTMLImageElement, Event>,
-  ) => {
-    console.error("Error loading image:", e);
-    setImageError(`Failed to load image: ${zoomedImage}`);
-  };
-
-  // Toggle the info panel
-  const toggleInfoPanel = () => {
-    // If there's no selected area yet, use the last hovered area
-    if (!selectedArea && hoveredAreaId) {
-      const area = areas.find((a) => a.id === hoveredAreaId);
-      if (area) {
-        setSelectedArea(area);
+  // Generate templates for areas with puzzle specs
+  useEffect(() => {
+    currentAreas.forEach((area) => {
+      if (area.puzzleSpec) {
+        area.codeTemplates = generateTemplates(area.puzzleSpec);
+        area.functionNames = generateFunctionNames(area.puzzleSpec);
       }
-    }
+    });
+  }, [currentAreas, currentLanguage]);
 
-    setShowInfoPanel(!showInfoPanel);
-  };
-
-  // Handle click on any clickable area
-  const handleAreaClick = (area: ClickableArea) => {
-    console.log(`Clicked on area: ${area.id}`);
-
-    // Set the selected area for the info panel (ClickableImage's local state)
-    setSelectedArea(area); // This updates ClickableImage's own local state for its info panel
-
-    // Notify App.tsx about the selected area so it can update its own state
-    if (typeof onSelectArea === "function") {
-      onSelectArea(area); // This calls App.tsx's setSelectedArea function
-    }
-
-    // If this area has a code template for the current language, load it into the editor
-    if (
-      area.codeTemplates &&
-      area.codeTemplates[currentLanguage] &&
-      typeof onLoadCodeTemplate === "function"
-    ) {
-      onLoadCodeTemplate(area.codeTemplates[currentLanguage]);
-    }
-
-    // Show the info panel so users can check their solution
-    setShowInfoPanel(true);
-
-    // Handle specific actions based on the area type
-    switch (area.action) {
-      case "mirror":
-        if (area.detailImage) {
-          console.log(`Setting zoomed image to: ${area.detailImage}`);
-          setZoomedImage(area.detailImage);
-          setIsZooming(true);
-          setImageError(null); // Reset any previous errors
-        } else {
-          alert(
-            `You examine the ${area.name}. It reflects a distorted image of yourself.`,
-          );
-        }
-        break;
-      case "door":
-        // Check if this puzzle has been completed
-        if (completedPuzzles.has(area.id)) {
-          alert(`The ${area.name} unlocks and swings open!`);
-        } else {
-          // Just show the info panel, don't show an alert
-          console.log(`Door puzzle not yet solved. Showing info panel.`);
-        }
-        break;
-      case "desk":
-        alert(
-          `You look at the ${area.name}. There are some papers and a drawer.`,
-        );
-        break;
-      default:
-        alert(`You interact with the ${area.name}.`);
-    }
-  };
-
-  const imagePath = imageSrc || "/haunted-room.jpg";
-
-  // Helper function to render different SVG shapes based on the area type
+  // Render shapes for SVG overlay
   const renderShape = (area: ClickableArea) => {
     const isHovered = hoveredAreaId === area.id;
     const isPuzzleSolved = completedPuzzles.has(area.id);
 
-    // Change fill color if the puzzle is completed
-    const fill = isPuzzleSolved
-      ? "rgba(0, 255, 0, 0.3)" // Green for solved puzzles
-      : isHovered
-        ? area.fillColor || "rgba(255, 255, 255, 0.3)"
-        : "rgba(0, 0, 0, 0)";
+    // Color coding by area type
+    let fillColor = "rgba(0, 0, 0, 0)";
+    let strokeColor = "rgba(0, 0, 0, 0)";
 
-    const stroke = isPuzzleSolved
-      ? "rgba(0, 255, 0, 0.6)" // Green for solved puzzles
-      : isHovered
-        ? area.strokeColor || "rgba(255, 255, 255, 0.6)"
-        : "rgba(0, 0, 0, 0)";
+    if (isPuzzleSolved) {
+      fillColor = "rgba(0, 255, 0, 0.3)";
+      strokeColor = "rgba(0, 255, 0, 0.6)";
+    } else if (isHovered) {
+      switch (area.areaType) {
+        case "photo":
+          fillColor = "rgba(255, 215, 0, 0.3)"; // Gold
+          strokeColor = "rgba(255, 215, 0, 0.6)";
+          break;
+        case "puzzle":
+          fillColor = "rgba(255, 165, 0, 0.3)"; // Orange
+          strokeColor = "rgba(255, 165, 0, 0.6)";
+          break;
+        case "info":
+          fillColor = "rgba(0, 191, 255, 0.3)"; // Deep sky blue
+          strokeColor = "rgba(0, 191, 255, 0.6)";
+          break;
+        case "data":
+          fillColor = "rgba(128, 0, 128, 0.3)"; // Purple
+          strokeColor = "rgba(128, 0, 128, 0.6)";
+          break;
+        default:
+          fillColor = area.fillColor || "rgba(255, 255, 255, 0.3)";
+          strokeColor = area.strokeColor || "rgba(255, 255, 255, 0.6)";
+      }
+    }
+
+    const shapeProps = {
+      key: area.id,
+      fill: fillColor,
+      stroke: strokeColor,
+      strokeWidth: "2",
+      style: {
+        cursor: "pointer",
+        pointerEvents: "auto" as const,
+        transition: "all 0.3s ease",
+      },
+      onClick: () => handleAreaClick(area),
+      onMouseEnter: () => setHoveredAreaId(area.id),
+      onMouseLeave: () => setHoveredAreaId(null),
+    };
 
     if (area.shape === "rect") {
       const [x, y, width, height] = area.coords;
-      return (
-        <rect
-          key={area.id}
-          x={x}
-          y={y}
-          width={width}
-          height={height}
-          fill={fill}
-          stroke={stroke}
-          strokeWidth="2"
-          style={{
-            cursor: "pointer",
-            pointerEvents: "auto",
-            transition: "fill 0.3s ease",
-          }}
-          onClick={() => handleAreaClick(area)}
-          onMouseEnter={() => setHoveredAreaId(area.id)}
-          onMouseLeave={() => setHoveredAreaId(null)}
-        />
-      );
+      return <rect x={x} y={y} width={width} height={height} {...shapeProps} />;
     } else if (area.shape === "circle") {
       const [cx, cy, r] = area.coords;
-      return (
-        <circle
-          key={area.id}
-          cx={cx}
-          cy={cy}
-          r={r}
-          fill={fill}
-          stroke={stroke}
-          strokeWidth="2"
-          style={{
-            cursor: "pointer",
-            pointerEvents: "auto",
-            transition: "fill 0.3s ease",
-          }}
-          onClick={() => handleAreaClick(area)}
-          onMouseEnter={() => setHoveredAreaId(area.id)}
-          onMouseLeave={() => setHoveredAreaId(null)}
-        />
-      );
+      return <circle cx={cx} cy={cy} r={r} {...shapeProps} />;
     } else if (area.shape === "poly") {
       const points = area.coords
-        .map((coord, i) => {
-          return i % 2 === 0 ? `${coord},` : coord;
-        })
+        .map((coord, i) => (i % 2 === 0 ? `${coord},` : coord))
         .join(" ");
-      return (
-        <polygon
-          key={area.id}
-          points={points}
-          fill={fill}
-          stroke={stroke}
-          strokeWidth="2"
-          style={{
-            cursor: "pointer",
-            pointerEvents: "auto",
-            transition: "fill 0.3s ease",
-          }}
-          onClick={() => handleAreaClick(area)}
-          onMouseEnter={() => setHoveredAreaId(area.id)}
-          onMouseLeave={() => setHoveredAreaId(null)}
-        />
-      );
+      return <polygon points={points} {...shapeProps} />;
     }
 
     return null;
   };
 
+  // Get current image source
+  const getCurrentImageSrc = () => {
+    return currentImage || imageSrc || "/haunted-room.jpg";
+  };
+
   return (
     <div ref={containerRef} className="clickable-image-container">
-      {/* Background image */}
+      {/* Main image */}
       <img
         ref={imgRef}
-        src={imagePath}
-        alt="Haunted Room"
+        src={getCurrentImageSrc()}
+        alt="Escape Room"
         onMouseMove={handleMouseMove}
+        onError={() =>
+          setImageError(`Failed to load image: ${getCurrentImageSrc()}`)
+        }
         style={{
-          opacity: isZooming ? 0 : 1,
+          opacity: isTransitioning ? 0 : 1,
           transition: "opacity 0.5s ease-in-out",
+          filter: isTransitioning ? "blur(5px)" : "none",
         }}
       />
 
-      {/* SVG overlay - positioned absolutely to match image exactly */}
-      {dimensions.width > 0 && !isZooming && (
+      {/* SVG overlay for clickable areas */}
+      {dimensions.width > 0 && !isTransitioning && (
         <svg
           width={dimensions.width}
           height={dimensions.height}
@@ -434,32 +524,27 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
             top: 0,
             left: 0,
             pointerEvents: "none",
-            opacity: isZooming ? 0 : 1,
-            transition: "opacity 0.5s ease-in-out",
           }}
           preserveAspectRatio="xMidYMid slice"
         >
-          {/* Render all clickable areas */}
-          {areas.map((area) => renderShape(area))}
+          {currentAreas.map(renderShape)}
 
-          {/* Optional: Show tooltips for hovered areas */}
+          {/* Tooltips */}
           {hoveredAreaId && (
             <g>
-              {areas
+              {currentAreas
                 .filter((area) => area.id === hoveredAreaId && area.tooltip)
                 .map((area) => {
-                  // Calculate tooltip position based on area type
                   let tooltipX, tooltipY;
                   if (area.shape === "rect") {
                     const [x, y, width] = area.coords;
                     tooltipX = x + width / 2;
-                    tooltipY = y - 10; // Position above the rectangle
+                    tooltipY = y - 10;
                   } else if (area.shape === "circle") {
                     const [cx, cy, r] = area.coords;
                     tooltipX = cx;
-                    tooltipY = cy - r - 10; // Position above the circle
+                    tooltipY = cy - r - 10;
                   } else {
-                    // For polygons, use the first pair of coordinates
                     tooltipX = area.coords[0];
                     tooltipY = area.coords[1] - 10;
                   }
@@ -467,22 +552,34 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
                   return (
                     <g key={`tooltip-${area.id}`}>
                       <rect
-                        x={tooltipX - 60}
-                        y={tooltipY - 20}
-                        width={120}
-                        height={24}
+                        x={tooltipX - 80}
+                        y={tooltipY - 30}
+                        width={160}
+                        height={40}
                         rx={5}
-                        fill="rgba(0, 0, 0, 0.7)"
+                        fill="rgba(0, 0, 0, 0.8)"
+                        stroke="white"
+                        strokeWidth={1}
                       />
                       <text
                         x={tooltipX}
-                        y={tooltipY - 5}
+                        y={tooltipY - 15}
                         textAnchor="middle"
                         fill="white"
                         fontSize="14"
                         fontFamily="Arial"
                       >
                         {area.tooltip}
+                      </text>
+                      <text
+                        x={tooltipX}
+                        y={tooltipY - 2}
+                        textAnchor="middle"
+                        fill="#ccc"
+                        fontSize="11"
+                        fontFamily="Arial"
+                      >
+                        {area.areaType.toUpperCase()}
                       </text>
                     </g>
                   );
@@ -492,259 +589,275 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
         </svg>
       )}
 
-      {/* Read Button (Book Icon) */}
-      {!isZooming && (
+      {/* Back button (only show if we have a navigation stack) */}
+      {imageStack.length > 0 && (
         <button
-          onClick={toggleInfoPanel}
+          onClick={goBack}
           style={{
-            position: "fixed",
-            bottom: "20px",
+            position: "absolute",
+            top: "20px",
             left: "20px",
-            width: "64px",
-            height: "64px",
-            background: `url(/book.png) no-repeat center center`,
+            width: "40px",
+            height: "40px",
+            background: "url(/back.svg) no-repeat center center",
             backgroundSize: "contain",
             border: "none",
-            borderRadius: "8px",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            borderRadius: "50%",
             cursor: "pointer",
-            zIndex: 1000,
-            boxShadow: "0 4px 8px rgba(0, 0, 0, 0.3)",
-            transition: "transform 0.3s ease",
-            transform: showInfoPanel ? "scale(1.1)" : "scale(1)",
+            filter: "invert(1)",
+            transition: "transform 0.2s ease",
           }}
-          aria-label="Toggle Information Panel"
-          title="Read Information"
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = "scale(1.1)";
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+          }}
+          title="Go Back"
         />
       )}
 
-      {/* Information Panel with Check Solution button */}
+      {/* Info Panel */}
       {showInfoPanel && selectedArea && (
-        <div className="info-panel">
-          <h3
-            style={{
-              margin: "0 0 10px 0",
-              color: completedPuzzles.has(selectedArea.id)
-                ? "#7FFF7F"
-                : "#f5deb3",
-              fontSize: "20px",
-            }}
-          >
-            {selectedArea.name} {completedPuzzles.has(selectedArea.id) && "✓"}
-          </h3>
-          <div
-            style={{
-              fontSize: "16px",
-              lineHeight: "1.5",
-              marginBottom: "15px",
-            }}
-          >
-            {selectedArea.description ||
-              "No information available about this item."}
-          </div>
-
-          {/* Display code template if available */}
-          {selectedArea?.puzzleSpec &&
-            selectedArea.codeTemplates?.[currentLanguage] &&
-            !completedPuzzles.has(selectedArea.id) && (
-              <div
-                style={{
-                  marginTop: "10px",
-                  marginBottom: "15px",
-                  padding: "10px",
-                  background: "rgba(0, 0, 0, 0.5)",
-                  borderLeft: "3px solid #4CAF50",
-                  fontFamily: "monospace",
-                  fontSize: "12px",
-                  overflow: "auto",
-                  maxHeight: "150px",
-                }}
-              >
-                <div
-                  style={{
-                    marginBottom: "8px",
-                    color: "#4CAF50",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <strong>PUZZLE CODE TEMPLATE ({currentLanguage}):</strong>
-                  <div style={{ fontSize: "10px", color: "#aaa" }}>
-                    {/* Expected solution: {String(selectedArea.expectedValue)} */}
-                  </div>
-                </div>
-                <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-                  {selectedArea.codeTemplates[currentLanguage]}
-                </pre>
-                <button
-                  onClick={() =>
-                    onLoadCodeTemplate &&
-                    selectedArea.codeTemplates &&
-                    onLoadCodeTemplate(
-                      selectedArea.codeTemplates[currentLanguage] || "",
-                    )
-                  }
-                  style={{
-                    marginTop: "10px",
-                    padding: "5px 10px",
-                    backgroundColor: "#2196F3",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    fontSize: "12px",
-                  }}
-                >
-                  Load Template
-                </button>
-              </div>
-            )}
-
-          {/* Add the Check Solution button only if this area has an expected value and is not solved */}
-          {selectedArea.expectedValue !== undefined &&
-            !completedPuzzles.has(selectedArea.id) && (
-              <button
-                onClick={() => checkSolution(selectedArea)}
-                style={{
-                  marginTop: "10px",
-                  padding: "8px 16px",
-                  backgroundColor: "#4CAF50",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                  display: "block",
-                  width: "100%",
-                }}
-              >
-                Check Solution
-              </button>
-            )}
-
+        <div
+          className="info-panel"
+          style={{
+            position: "fixed",
+            bottom: "100px",
+            right: "20px",
+            width: "350px",
+            maxHeight: "60vh",
+            overflowY: "auto",
+            backgroundColor: "rgba(0, 0, 0, 0.9)",
+            color: "white",
+            padding: "20px",
+            borderRadius: "10px",
+            border: "2px solid #555",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.7)",
+          }}
+        >
           <button
             onClick={() => setShowInfoPanel(false)}
             style={{
               position: "absolute",
               top: "10px",
               right: "10px",
-              background: "transparent",
+              background: "none",
               border: "none",
               color: "white",
-              fontSize: "16px",
+              fontSize: "18px",
               cursor: "pointer",
             }}
           >
             ✕
           </button>
-        </div>
-      )}
 
-      {/* ZOOMED IMAGE VIEW */}
-      {isZooming && (
-        <div className="zoomed-overlay">
-          {/* Back button in top-left corner using back.svg */}
-          <button
-            onClick={handleBackClick}
+          <h3
             style={{
-              position: "absolute",
-              top: "20px",
-              left: "20px",
-              width: "40px",
-              height: "40px",
-              background: `url(/back.svg) no-repeat center center`,
-              backgroundSize: "contain",
-              border: "none",
-              backgroundColor: "transparent",
-              cursor: "pointer",
-              zIndex: 10000,
-              transition: "transform 0.2s ease",
-              filter: "invert(1)", // Make SVG white for visibility on dark background
+              margin: "0 0 15px 0",
+              color: completedPuzzles.has(selectedArea.id)
+                ? "#7FFF7F"
+                : "#ffd700",
+              fontSize: "22px",
             }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.transform = "scale(1.1)";
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-            }}
-            aria-label="Return to Room"
-            title="Return to Room"
-          />
-
-          {/* Show error message if image fails to load */}
-          {imageError && (
-            <div style={{ color: "red", margin: "20px", fontSize: "18px" }}>
-              {imageError}
-            </div>
-          )}
-
-          {/* Display the image */}
-          {zoomedImage && (
-            <img
-              src={zoomedImage}
-              alt="Detailed view"
+          >
+            {selectedArea.name} {completedPuzzles.has(selectedArea.id) && "✓"}
+            <span
               style={{
-                maxWidth: "90%",
-                maxHeight: "80vh",
-                border: "2px solid white",
+                fontSize: "12px",
+                color: "#aaa",
+                marginLeft: "10px",
+                textTransform: "uppercase",
+                letterSpacing: "1px",
               }}
-              onError={handleImageError}
-            />
-          )}
+            >
+              [{selectedArea.areaType}]
+            </span>
+          </h3>
+
+          <div style={{ marginBottom: "15px", lineHeight: "1.6" }}>
+            {selectedArea.description || "No description available."}
+          </div>
+
+          {/* Show puzzle template for puzzle areas */}
+          {selectedArea.areaType === "puzzle" &&
+            selectedArea.codeTemplates &&
+            selectedArea.codeTemplates[currentLanguage] &&
+            !completedPuzzles.has(selectedArea.id) && (
+              <div
+                style={{
+                  marginTop: "15px",
+                  padding: "10px",
+                  background: "rgba(255, 255, 255, 0.1)",
+                  borderLeft: "3px solid #ffd700",
+                  borderRadius: "5px",
+                }}
+              >
+                <div
+                  style={{
+                    marginBottom: "10px",
+                    color: "#ffd700",
+                    fontWeight: "bold",
+                  }}
+                >
+                  PUZZLE TEMPLATE ({currentLanguage.toUpperCase()}):
+                </div>
+                <pre
+                  style={{
+                    margin: 0,
+                    fontSize: "11px",
+                    whiteSpace: "pre-wrap",
+                    backgroundColor: "rgba(0, 0, 0, 0.5)",
+                    padding: "10px",
+                    borderRadius: "3px",
+                    maxHeight: "150px",
+                    overflow: "auto",
+                  }}
+                >
+                  {selectedArea.codeTemplates[currentLanguage]}
+                </pre>
+                <button
+                  onClick={() => {
+                    if (onLoadCodeTemplate && selectedArea.codeTemplates) {
+                      onLoadCodeTemplate(
+                        selectedArea.codeTemplates[currentLanguage] || "",
+                      );
+                    }
+                  }}
+                  style={{
+                    marginTop: "10px",
+                    padding: "6px 12px",
+                    backgroundColor: "#ffd700",
+                    color: "black",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                  }}
+                >
+                  Load into Editor
+                </button>
+              </div>
+            )}
+
+          {/* Show data content for info/data areas */}
+          {(selectedArea.areaType === "info" ||
+            selectedArea.areaType === "data") &&
+            selectedArea.dataContent && (
+              <div
+                style={{
+                  marginTop: "15px",
+                  padding: "10px",
+                  background: "rgba(255, 255, 255, 0.1)",
+                  borderLeft: "3px solid #4CAF50",
+                  borderRadius: "5px",
+                }}
+              >
+                <div
+                  style={{
+                    marginBottom: "10px",
+                    color: "#4CAF50",
+                    fontWeight: "bold",
+                  }}
+                >
+                  DATA CONTENT ({selectedArea.dataType?.toUpperCase() || "TEXT"}
+                  ):
+                </div>
+                <pre
+                  style={{
+                    margin: 0,
+                    fontSize: "11px",
+                    whiteSpace: "pre-wrap",
+                    backgroundColor: "rgba(0, 0, 0, 0.5)",
+                    padding: "10px",
+                    borderRadius: "3px",
+                    maxHeight: "150px",
+                    overflow: "auto",
+                  }}
+                >
+                  {typeof selectedArea.dataContent === "string"
+                    ? selectedArea.dataContent
+                    : JSON.stringify(selectedArea.dataContent, null, 2)}
+                </pre>
+                {selectedArea.processingHint && (
+                  <div
+                    style={{
+                      marginTop: "10px",
+                      padding: "8px",
+                      backgroundColor: "rgba(255, 215, 0, 0.2)",
+                      borderRadius: "3px",
+                      fontSize: "12px",
+                      color: "#ffd700",
+                    }}
+                  >
+                    💡 Hint: {selectedArea.processingHint}
+                  </div>
+                )}
+              </div>
+            )}
+
+          {/* Check Solution button for puzzle areas */}
+          {selectedArea.areaType === "puzzle" &&
+            selectedArea.expectedValue !== undefined &&
+            !completedPuzzles.has(selectedArea.id) && (
+              <button
+                onClick={() => checkSolution(selectedArea)}
+                style={{
+                  width: "100%",
+                  marginTop: "15px",
+                  padding: "10px",
+                  backgroundColor: "#4CAF50",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                  fontSize: "14px",
+                }}
+              >
+                Check Solution
+              </button>
+            )}
         </div>
       )}
 
-      {/* Debug overlay - show coordinates when moving over the image */}
+      {/* Debug coordinates */}
       <div
-        className="debug-coordinates"
         style={{
-          display: isZooming ? "none" : "block",
-          zIndex: 1000,
+          position: "fixed",
+          bottom: "20px",
+          right: "20px",
+          background: "rgba(0, 0, 0, 0.7)",
+          color: "white",
+          padding: "5px 10px",
+          borderRadius: "3px",
+          fontSize: "12px",
+          fontFamily: "monospace",
+          display: isTransitioning ? "none" : "block",
         }}
       >
-        Image coords: {mousePosition.x}, {mousePosition.y}
+        {mousePosition.x}, {mousePosition.y}
       </div>
 
-      {/* Add CSS animations */}
-      <style>
-        {`
-          @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          
-          .info-panel {
-            position: fixed;
-            bottom: 100px;
-            right: 20px;
-            width: 300px;
-            background-color: rgba(0, 0, 0, 0.85);
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            z-index: 999;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            font-family: Georgia, serif;
-            animation: fadeIn 0.3s ease-in;
-          }
-          
-          .zoomed-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.9);
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-          }
-        `}
-      </style>
+      {/* Error display */}
+      {imageError && (
+        <div
+          style={{
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            background: "rgba(255, 0, 0, 0.9)",
+            color: "white",
+            padding: "20px",
+            borderRadius: "10px",
+            fontSize: "16px",
+          }}
+        >
+          {imageError}
+        </div>
+      )}
     </div>
   );
 };
