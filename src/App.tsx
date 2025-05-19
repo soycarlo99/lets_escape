@@ -4,7 +4,11 @@ import { OutputView } from "./components/OutputView";
 import { LanguageSelector } from "./components/LanguageSelector";
 import { PuzzleSelector } from "./components/PuzzleSelector";
 import { puzzles } from "./data/puzzles";
-import { executeJavaScript, mockExecuteCode } from "./utils/codeExecution";
+import {
+  executeCode,
+  executeJavaScriptLocal,
+  mockExecuteCode,
+} from "./utils/codeExecution";
 import { ClickableImage } from "./components/ClickableImage";
 import { clickableAreas, ClickableArea } from "./types/clickableAreas";
 import { PuzzleSpec, generateTemplates } from "./utils/templateGenerator";
@@ -157,8 +161,7 @@ const App: React.FC = () => {
     setCurrentPuzzle(selectedPuzzle);
   };
 
-  const handleLoadPuzzle = () => {
-  };
+  const handleLoadPuzzle = () => {};
 
   const handleCodeChange = (code: string) => {
     setCurrentCode(code);
@@ -187,7 +190,7 @@ const App: React.FC = () => {
     }
   };
 
-  const runCode = () => {
+  const runCode = async () => {
     if (!currentCode.trim()) {
       setOutput("Please enter some code first.");
       return;
@@ -195,55 +198,32 @@ const App: React.FC = () => {
 
     try {
       if (currentPuzzle) {
-        if (currentLanguage === "javascript") {
-          const functionName = extractFunctionName(
-            currentCode,
-            currentLanguage,
-          );
+        const functionName = extractFunctionName(currentCode, currentLanguage);
 
-          if (!functionName) {
-            setOutput(
-              "Could not find the function to test. Make sure you have defined the function correctly.",
-            );
-            return;
-          }
-
-          const testResults = executeJavaScript(
-            currentCode,
-            functionName,
-            currentPuzzle.tests,
+        if (!functionName && currentLanguage !== "javascript") {
+          setOutput(
+            "Could not find the function to test. Make sure you have defined the function correctly.",
           );
+          return;
+        }
+
+        // Use the new async executeCode function
+        const testResults = await executeCode(
+          currentCode,
+          currentLanguage,
+          functionName,
+          currentPuzzle.tests,
+        );
+
+        if (Array.isArray(testResults)) {
           displayTestResults(testResults as TestResult[]);
         } else {
-          mockExecuteCode(currentLanguage, currentPuzzle, displayTestResults);
+          setOutput(testResults);
         }
       } else {
-        if (currentLanguage === "javascript") {
-          const output = executeJavaScript(currentCode);
-          setOutput(output);
-        } else {
-          setOutput(
-            <div className="execution-message">
-              <p>
-                Code execution for {currentLanguage} would typically require a
-                server-side component.
-              </p>
-              <p>
-                In a production environment, this would send the code to a
-                backend service that:
-              </p>
-              <ol>
-                <li>Creates an isolated execution environment</li>
-                <li>Compiles/interprets the code securely</li>
-                <li>Runs the code with appropriate resource limits</li>
-                <li>Returns the output or error messages</li>
-              </ol>
-              <p>
-                For this demo, we're only displaying the code you've written.
-              </p>
-            </div>,
-          );
-        }
+        // Regular code execution
+        const output = await executeCode(currentCode, currentLanguage);
+        setOutput(output);
       }
     } catch (error: any) {
       setOutput(`Error: ${error.message}`);
@@ -312,8 +292,12 @@ const App: React.FC = () => {
       const functionName = area.functionNames?.[currentLanguage];
 
       if (!functionName) {
-        console.error(`No function name provided for ${currentLanguage} in area ${area.id}`);
-        alert(`Configuration error: No function name defined for ${currentLanguage} for this puzzle.`);
+        console.error(
+          `No function name provided for ${currentLanguage} in area ${area.id}`,
+        );
+        alert(
+          `Configuration error: No function name defined for ${currentLanguage} for this puzzle.`,
+        );
         return;
       }
 
@@ -398,7 +382,7 @@ const App: React.FC = () => {
       // Calculate new width based on mouse position relative to the right edge of the screen
       // or the edge of the interactiveRoomRef if it's not full screen.
       const newWidth = window.innerWidth - e.clientX;
-      
+
       // Apply constraints to sidebar width (e.g., min 200px, max 800px or 50% of window)
       const minWidth = 200;
       const maxWidth = Math.min(800, window.innerWidth * 0.7);
@@ -503,8 +487,14 @@ const App: React.FC = () => {
 
           {showSidebar && (
             <>
-              <div className="resize-handle" onMouseDown={handleMouseDownOnResizeHandle} />
-              <div className="editor-sidebar" style={{ width: `${sidebarWidth}px` }}>
+              <div
+                className="resize-handle"
+                onMouseDown={handleMouseDownOnResizeHandle}
+              />
+              <div
+                className="editor-sidebar"
+                style={{ width: `${sidebarWidth}px` }}
+              >
                 <div className="sidebar-controls">
                   <LanguageSelector
                     currentLanguage={currentLanguage}
