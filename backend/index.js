@@ -32,6 +32,34 @@ const LANGUAGE_MAP = {
   typescript: 74, // TypeScript
 };
 
+// Helper function to check if a string is base64 encoded
+function isBase64(str) {
+  if (!str) return false;
+  try {
+    return Buffer.from(str, "base64").toString("base64") === str;
+  } catch (err) {
+    return false;
+  }
+}
+
+// Helper function to safely decode base64 or return plain text
+function safeDecodeBase64(str) {
+  if (!str) return "";
+
+  // If it's base64 encoded, decode it
+  if (isBase64(str)) {
+    try {
+      return Buffer.from(str, "base64").toString();
+    } catch (err) {
+      console.warn("Failed to decode base64:", err.message);
+      return str; // Return as-is if decoding fails
+    }
+  }
+
+  // Otherwise, return as plain text
+  return str;
+}
+
 // Health check endpoint
 app.get("/api/health", (req, res) => {
   res.json({ status: "OK", judge0: JUDGE0_URL });
@@ -54,7 +82,7 @@ app.get("/api/test-judge0", async (req, res) => {
 
     // Test 2: Submit a simple code
     const testSubmission = {
-      source_code: Buffer.from('print("test")').toString("base64"),
+      source_code: 'print("test")', // Send as plain text
       language_id: 71, // Python
     };
 
@@ -133,14 +161,21 @@ app.post("/api/execute", async (req, res) => {
     // Submit code to Judge0 with timeout and better error handling
     let submissionResponse;
     const submissionPayload = {
-      source_code: Buffer.from(code).toString("base64"),
+      source_code: code, // Send as plain text
       language_id: languageId,
-      stdin: Buffer.from(stdin).toString("base64"),
+      stdin: stdin, // Send as plain text
     };
 
     console.log(
-      "Submission payload:",
-      JSON.stringify(submissionPayload, null, 2),
+      "Submission payload (first 100 chars of code):",
+      JSON.stringify(
+        {
+          ...submissionPayload,
+          source_code: submissionPayload.source_code.substring(0, 100) + "...",
+        },
+        null,
+        2,
+      ),
     );
 
     try {
@@ -235,17 +270,19 @@ app.post("/api/execute", async (req, res) => {
       return res.status(500).json({ error: "Failed to get execution result" });
     }
 
-    // Decode results
+    // Debug: Log raw response from Judge0
+    console.log("Raw Judge0 response:", {
+      stdout: result.data.stdout,
+      stderr: result.data.stderr,
+      compile_output: result.data.compile_output,
+      status: result.data.status,
+    });
+
+    // Safely decode results (handle both base64 and plain text responses)
     const response = {
-      stdout: result.data.stdout
-        ? Buffer.from(result.data.stdout, "base64").toString()
-        : "",
-      stderr: result.data.stderr
-        ? Buffer.from(result.data.stderr, "base64").toString()
-        : "",
-      compile_output: result.data.compile_output
-        ? Buffer.from(result.data.compile_output, "base64").toString()
-        : "",
+      stdout: safeDecodeBase64(result.data.stdout),
+      stderr: safeDecodeBase64(result.data.stderr),
+      compile_output: safeDecodeBase64(result.data.compile_output),
       status: result.data.status,
       time: result.data.time,
       memory: result.data.memory,
@@ -271,12 +308,10 @@ app.post("/api/execute", async (req, res) => {
         .status(429)
         .json({ error: "Too many requests. Please wait a moment." });
     } else if (error.code === "ECONNREFUSED") {
-      res
-        .status(503)
-        .json({
-          error:
-            "Judge0 service unavailable. Make sure Docker containers are running.",
-        });
+      res.status(503).json({
+        error:
+          "Judge0 service unavailable. Make sure Docker containers are running.",
+      });
     } else {
       res
         .status(500)
@@ -378,7 +413,7 @@ public class Main {
 
       try {
         const submission = await axios.post(`${JUDGE0_URL}/submissions`, {
-          source_code: Buffer.from(testCode).toString("base64"),
+          source_code: testCode, // Send as plain text
           language_id: languageId,
         });
 
@@ -396,15 +431,10 @@ public class Main {
           attempts++;
         }
 
-        const stdout = result.data.stdout
-          ? Buffer.from(result.data.stdout, "base64").toString().trim()
-          : "";
-        const stderr = result.data.stderr
-          ? Buffer.from(result.data.stderr, "base64").toString()
-          : "";
-        const compileOutput = result.data.compile_output
-          ? Buffer.from(result.data.compile_output, "base64").toString()
-          : "";
+        // Use the safe decode function for test results too
+        const stdout = safeDecodeBase64(result.data.stdout).trim();
+        const stderr = safeDecodeBase64(result.data.stderr);
+        const compileOutput = safeDecodeBase64(result.data.compile_output);
 
         let actual;
         let passed = false;
@@ -470,7 +500,7 @@ app.get("/api/judge0-status", async (req, res) => {
 
     // Test a simple submission
     const testSubmission = await axios.post(`${JUDGE0_URL}/submissions`, {
-      source_code: Buffer.from('print("test")').toString("base64"),
+      source_code: 'print("test")', // Send as plain text
       language_id: 71,
     });
 
