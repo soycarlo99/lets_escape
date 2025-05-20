@@ -1,4 +1,4 @@
-// src/utils/templateGenerator.ts - Updated with universal function name
+// src/utils/templateGenerator.ts - Updated with universal function name and safer templates
 
 import { Language } from "../App";
 
@@ -76,7 +76,9 @@ function getPuzzleHeader(spec: PuzzleSpec): string {
   if (spec.hints && spec.hints.length > 0) {
     headerLines.push("HINTS:");
     spec.hints.forEach((hint, index) => {
-      headerLines.push(`  ${index + 1}. ${hint}`);
+      // Escape any potential problematic characters in hints
+      const cleanHint = hint.replace(/"/g, '\\"').replace(/'/g, "\\'");
+      headerLines.push(`  ${index + 1}. ${cleanHint}`);
     });
     headerLines.push("");
   }
@@ -137,9 +139,13 @@ function getDefaultReturnValue(
 function generateJavaScriptTemplate(spec: PuzzleSpec): string {
   const header = getPuzzleHeader(spec);
 
-  return `/*
-${header}
-*/
+  // Split header into lines and create individual line comments
+  const headerLines = header
+    .split("\n")
+    .map((line) => `// ${line}`)
+    .join("\n");
+
+  return `${headerLines}
 
 function ${UNIVERSAL_FUNCTION_NAME}() {
     // Your solution code goes here
@@ -159,9 +165,13 @@ function generateTypeScriptTemplate(spec: PuzzleSpec): string {
   const header = getPuzzleHeader(spec);
   const returnType = getTypeAnnotation(spec.returnType, "typescript");
 
-  return `/*
-${header}
-*/
+  // Split header into lines and create individual line comments
+  const headerLines = header
+    .split("\n")
+    .map((line) => `// ${line}`)
+    .join("\n");
+
+  return `${headerLines}
 
 function ${UNIVERSAL_FUNCTION_NAME}(): ${returnType} {
     // Your solution code goes here
@@ -180,9 +190,13 @@ function ${UNIVERSAL_FUNCTION_NAME}(): ${returnType} {
 function generatePythonTemplate(spec: PuzzleSpec): string {
   const header = getPuzzleHeader(spec);
 
-  return `"""
-${header}
-"""
+  // Split header into lines and create individual line comments
+  const headerLines = header
+    .split("\n")
+    .map((line) => `# ${line}`)
+    .join("\n");
+
+  return `${headerLines}
 
 def ${UNIVERSAL_FUNCTION_NAME}():
     # Your solution code goes here

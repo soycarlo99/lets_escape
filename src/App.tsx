@@ -291,7 +291,7 @@ const App: React.FC = () => {
   };
 
   // Handle checking puzzle solution from the editor with universal function name
-  const handleCheckPuzzleSolution = (area: ClickableArea) => {
+  const handleCheckPuzzleSolution = async (area: ClickableArea) => {
     try {
       if (!currentCode || currentCode.trim() === "") {
         alert("Please write some code in the editor first.");
@@ -304,48 +304,73 @@ const App: React.FC = () => {
       console.log("Checking solution for puzzle:", area.name);
       console.log("Expected value:", area.expectedValue);
       console.log("Using universal function name:", UNIVERSAL_FUNCTION_NAME);
+      console.log("Current language:", currentLanguage);
 
-      // Step 1: Execute user code to define functions
-      try {
-        eval(currentCode);
-      } catch (evalError: any) {
-        throw new Error(`Error in your code: ${evalError.message}`);
-      }
-
-      // Step 2: Try to call the universal function
-      let userFunction;
-      try {
-        userFunction = eval(UNIVERSAL_FUNCTION_NAME);
-      } catch (e) {
-        // Function might not be in global scope, try as a property of window
-        userFunction = (window as any)[UNIVERSAL_FUNCTION_NAME];
-      }
-
-      // Also try checking for language-specific function names as fallback
-      if (typeof userFunction !== "function") {
-        // For languages like Java/C# that use class methods
-        const languageSpecificChecks = [
-          "PuzzleClass.solution",
-          "PuzzleClass.Solution",
-          // Add any other patterns if needed
-        ];
-
-        for (const funcName of languageSpecificChecks) {
-          try {
-            userFunction = eval(funcName);
-            if (typeof userFunction === "function") {
-              console.log(`Found function using: ${funcName}`);
-              break;
+      // For JavaScript/TypeScript, we can execute locally
+      if (
+        currentLanguage === "javascript" ||
+        currentLanguage === "typescript"
+      ) {
+        // Step 1: Execute user code to define functions using Function constructor
+        let executionContext: any = {};
+        try {
+          // Create a function that will execute the user's code in a controlled context
+          const codeFunction = new Function(`
+            ${currentCode}
+            
+            // Export the solution function if it exists
+            if (typeof solution !== 'undefined') {
+              return { solution: solution };
             }
+            
+            // Check for class-based solutions (Java/C#)
+            if (typeof PuzzleClass !== 'undefined' && PuzzleClass.solution) {
+              return { solution: PuzzleClass.solution };
+            }
+            if (typeof PuzzleClass !== 'undefined' && PuzzleClass.Solution) {
+              return { solution: PuzzleClass.Solution };
+            }
+            
+            return {};
+          `);
+
+          // Execute the code and get the result
+          executionContext = codeFunction() || {};
+        } catch (evalError: any) {
+          // Clean up the error message for better user experience
+          let errorMessage = evalError.message;
+
+          // Handle common error patterns
+          if (errorMessage.includes("Unexpected token")) {
+            errorMessage =
+              "Syntax error in your code. Please check for missing brackets, quotes, or semicolons.";
+          } else if (
+            errorMessage.includes(
+              "string literal contains an unescaped line break",
+            )
+          ) {
+            errorMessage =
+              "String literal error. Make sure all your strings are properly quoted and don't contain unescaped line breaks.";
+          }
+
+          throw new Error(`Error in your code: ${errorMessage}`);
+        }
+
+        // Step 2: Try to get the solution function
+        let userFunction = executionContext.solution;
+
+        // Step 3: Fallback checks in global scope if not found in execution context
+        if (typeof userFunction !== "function") {
+          try {
+            userFunction = (window as any)[UNIVERSAL_FUNCTION_NAME];
           } catch (e) {
             // Continue to next check
           }
         }
-      }
 
-      if (typeof userFunction !== "function") {
-        // Show current puzzle info in error
-        throw new Error(`Function 'solution()' is not defined for the ${area.name} puzzle.
+        if (typeof userFunction !== "function") {
+          // Show current puzzle info in error
+          throw new Error(`Function 'solution()' is not defined for the ${area.name} puzzle.
 
 Current Puzzle: ${area.name}
 ${area.description || "No description available"}
@@ -353,46 +378,137 @@ ${area.description || "No description available"}
 Expected: You should define a function named exactly 'solution()' that returns ${area.expectedValue}
 
 Please check the puzzle template for the correct function signature.`);
-      }
+        }
 
-      // Step 3: Call the function and get result
-      const result = userFunction();
-      console.log("Function result:", result);
+        // Step 4: Call the function and get result
+        const result = userFunction();
+        console.log("Function result:", result);
 
-      // Compare results (handle different types)
-      let isCorrect = false;
-      if (typeof result === typeof area.expectedValue) {
-        isCorrect = result === area.expectedValue;
-      } else {
-        // Try loose comparison for number/string conversions
-        isCorrect = result == area.expectedValue;
-      }
+        // Step 5: Compare results (handle different types)
+        let isCorrect = false;
 
-      if (isCorrect) {
-        // Mark as solved locally
-        const newSolvedPuzzles = new Set(solvedPuzzles);
-        newSolvedPuzzles.add(area.id);
-        setSolvedPuzzles(newSolvedPuzzles);
+        if (result === area.expectedValue) {
+          isCorrect = true;
+        } else if (
+          typeof result === "number" &&
+          typeof area.expectedValue === "number"
+        ) {
+          // Handle potential floating point precision issues
+          isCorrect = Math.abs(result - area.expectedValue) < Number.EPSILON;
+        } else if (typeof result === typeof area.expectedValue) {
+          // Strict type comparison
+          isCorrect = result === area.expectedValue;
+        } else {
+          // Try loose comparison for type conversions (e.g., "42" == 42)
+          isCorrect = result == area.expectedValue;
+        }
 
-        // Update selected area
-        setSelectedArea({
-          ...area,
-          puzzleCompleted: true,
-        });
+        if (isCorrect) {
+          // Mark as solved locally
+          const newSolvedPuzzles = new Set(solvedPuzzles);
+          newSolvedPuzzles.add(area.id);
+          setSolvedPuzzles(newSolvedPuzzles);
 
-        alert(`🎉 Excellent! You've solved the ${area.name} puzzle!
+          // Update selected area
+          setSelectedArea({
+            ...area,
+            puzzleCompleted: true,
+          });
+
+          alert(`🎉 Excellent! You've solved the ${area.name} puzzle!
 
 Your solution: ${result}
 Expected: ${area.expectedValue}
 
 The door unlocks with a satisfying click!`);
-      } else {
-        alert(`❌ Not the right answer for ${area.name}
+        } else {
+          alert(`❌ Not the right answer for ${area.name}
 
 Your result: ${result} (${typeof result})
 Expected: ${area.expectedValue} (${typeof area.expectedValue})
 
 Try reviewing the puzzle description and hints.`);
+        }
+      } else {
+        // For other languages (Python, Java, C++, etc.), use the backend API
+        const BACKEND_URL =
+          import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
+
+        try {
+          // Create a pseudo test to use the backend API
+          const pseudoTest = {
+            input: [],
+            expected: area.expectedValue,
+          };
+
+          const response = await fetch(`${BACKEND_URL}/api/test-puzzle`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              code: currentCode,
+              language: currentLanguage,
+              functionName: UNIVERSAL_FUNCTION_NAME,
+              tests: [pseudoTest],
+            }),
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || "Failed to execute code on server");
+          }
+
+          const results = await response.json();
+
+          if (results && results.length > 0) {
+            const result = results[0];
+
+            if (result.passed) {
+              // Mark as solved locally
+              const newSolvedPuzzles = new Set(solvedPuzzles);
+              newSolvedPuzzles.add(area.id);
+              setSolvedPuzzles(newSolvedPuzzles);
+
+              // Update selected area
+              setSelectedArea({
+                ...area,
+                puzzleCompleted: true,
+              });
+
+              alert(`🎉 Excellent! You've solved the ${area.name} puzzle!
+
+Your solution: ${result.actual}
+Expected: ${result.expected}
+
+The door unlocks with a satisfying click!`);
+            } else {
+              alert(`❌ Not the right answer for ${area.name}
+
+Your result: ${result.actual}
+Expected: ${result.expected}
+
+Try reviewing the puzzle description and hints.`);
+            }
+          } else {
+            throw new Error("No results returned from server");
+          }
+        } catch (fetchError: any) {
+          // If backend is not available, show helpful message
+          if (fetchError.message.includes("fetch")) {
+            alert(`🔧 Backend Required for ${currentLanguage.toUpperCase()}
+
+To test ${currentLanguage.toUpperCase()} code, you need the backend server running.
+
+For now, you can:
+1. Switch to JavaScript/TypeScript for instant testing
+2. Or set up the backend server to test ${currentLanguage.toUpperCase()} code
+
+Your function should return: ${area.expectedValue}`);
+          } else {
+            throw fetchError;
+          }
+        }
       }
     } catch (error: any) {
       console.error("Error in handleCheckPuzzleSolution:", error);

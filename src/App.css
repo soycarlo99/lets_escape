@@ -483,6 +483,37 @@ html {
   cursor: pointer;
 }
 
+.info-panel > button:nth-child(5) {
+  width: 95% !important;
+  margin-top: 45px !important;
+  padding: 10px;
+  background-color: rgb(76, 175, 80);
+  color: white;
+  border: medium;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.info-panel > div:nth-child(4) > div:nth-child(5) > button:nth-child(1) {
+  width: 95% !important;
+  padding: 10px;
+  background-color: rgb(255, 215, 0);
+  color: black;
+  border: medium;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 13px;
+}
+
+.info-panel > div:nth-child(3) {
+  margin-bottom: 15px;
+  line-height: 1.6;
+  padding-top: 50px;
+}
+
 /* ========== UI ELEMENTS & BUTTONS ========== */
 .game-message {
   position: fixed;
