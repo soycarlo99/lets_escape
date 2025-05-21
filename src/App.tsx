@@ -3,9 +3,11 @@ import { EditorView } from "./components/EditorView";
 import { OutputView } from "./components/OutputView";
 import { LanguageSelector } from "./components/LanguageSelector";
 import { ClickableImage } from "./components/ClickableImage";
+import { RoomEditor } from "./components/RoomEditor";
 import { clickableAreas, ClickableArea } from "./types/clickableAreas";
 import { executeCode } from "./utils/codeExecution";
 import "./styles/main.css";
+import "./styles/room-editor.css";
 
 // Define types
 export type Language =
@@ -22,6 +24,7 @@ export type Language =
 enum View {
   CodeEditor,
   InteractiveRoom,
+  RoomEditor, // Add new view for room editor
 }
 
 const App: React.FC = () => {
@@ -47,48 +50,48 @@ const App: React.FC = () => {
   // Effect to update editor content based on language
   useEffect(() => {
     // Default code for each language
-      switch (currentLanguage) {
-        case "javascript":
-          setCurrentCode(
-            '// Write your JavaScript code here\nconsole.log("Hello, world!");',
-          );
-          break;
-        case "python":
+    switch (currentLanguage) {
+      case "javascript":
+        setCurrentCode(
+          '// Write your JavaScript code here\nconsole.log("Hello, world!");',
+        );
+        break;
+      case "python":
         setCurrentCode('# Write your Python code here\nprint("Hello, world!")');
-          break;
-        case "java":
-          setCurrentCode(
-            '// Write your Java code here\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, world!");\n    }\n}',
-          );
-          break;
-        case "cpp":
-          setCurrentCode(
-            '// Write your C++ code here\n#include <iostream>\n\nint main() {\n    std::cout << "Hello, world!" << std::endl;\n    return 0;\n}',
-          );
-          break;
-        case "csharp":
-          setCurrentCode(
-            '// Write your C# code here\nusing System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello, world!");\n    }\n}',
-          );
-          break;
-        case "go":
-          setCurrentCode(
-            '// Write your Go code here\npackage main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, world!")\n}',
-          );
-          break;
-        case "rust":
-          setCurrentCode(
-            '// Write your Rust code here\nfn main() {\n    println!("Hello, world!");\n}',
-          );
-          break;
-        case "typescript":
-          setCurrentCode(
-            '// Write your TypeScript code here\nfunction greet(name: string): string {\n    return `Hello, ${name}!`;\n}\n\nconsole.log(greet("world"));',
-          );
-          break;
-        default:
-          setCurrentCode("// Write your code here");
-      }
+        break;
+      case "java":
+        setCurrentCode(
+          '// Write your Java code here\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, world!");\n    }\n}',
+        );
+        break;
+      case "cpp":
+        setCurrentCode(
+          '// Write your C++ code here\n#include <iostream>\n\nint main() {\n    std::cout << "Hello, world!" << std::endl;\n    return 0;\n}',
+        );
+        break;
+      case "csharp":
+        setCurrentCode(
+          '// Write your C# code here\nusing System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello, world!");\n    }\n}',
+        );
+        break;
+      case "go":
+        setCurrentCode(
+          '// Write your Go code here\npackage main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, world!")\n}',
+        );
+        break;
+      case "rust":
+        setCurrentCode(
+          '// Write your Rust code here\nfn main() {\n    println!("Hello, world!");\n}',
+        );
+        break;
+      case "typescript":
+        setCurrentCode(
+          '// Write your TypeScript code here\nfunction greet(name: string): string {\n    return `Hello, ${name}!`;\n}\n\nconsole.log(greet("world"));',
+        );
+        break;
+      default:
+        setCurrentCode("// Write your code here");
+    }
   }, [currentLanguage]);
 
   const handleLanguageChange = (language: Language) => {
@@ -111,9 +114,9 @@ const App: React.FC = () => {
     }
 
     try {
-        // Regular code execution
-        const output = await executeCode(currentCode, currentLanguage);
-        setOutput(output);
+      // Regular code execution
+      const output = await executeCode(currentCode, currentLanguage);
+      setOutput(output);
     } catch (error: any) {
       setOutput(`Error: ${error.message}`);
     }
@@ -124,15 +127,25 @@ const App: React.FC = () => {
     setShowSidebar(!showSidebar);
   };
 
-  // Toggle between views
+  // Switch to the Room Editor view
+  const switchToRoomEditor = () => {
+    setActiveView(View.RoomEditor);
+  };
+
+  // Switch between other views
   const toggleView = () => {
-    setActiveView(
-      activeView === View.CodeEditor ? View.InteractiveRoom : View.CodeEditor,
-    );
-    // Reset sidebar width when switching to interactive view if it was collapsed
-    if (activeView === View.CodeEditor && sidebarWidth < 100) {
-      setSidebarWidth(450);
-      setShowSidebar(true);
+    if (activeView === View.CodeEditor) {
+      setActiveView(View.InteractiveRoom);
+      // Reset sidebar width when switching to interactive view if it was collapsed
+      if (sidebarWidth < 100) {
+        setSidebarWidth(450);
+        setShowSidebar(true);
+      }
+    } else if (activeView === View.InteractiveRoom) {
+      setActiveView(View.CodeEditor);
+    } else {
+      // If in RoomEditor, go back to Code Editor
+      setActiveView(View.CodeEditor);
     }
   };
 
@@ -176,18 +189,45 @@ const App: React.FC = () => {
   // Render the app with view switching
   return (
     <div
-      className={`app-container ${activeView === View.CodeEditor ? "code-editor-view" : "interactive-view"}`}
+      className={`app-container ${
+        activeView === View.CodeEditor
+          ? "code-editor-view"
+          : activeView === View.InteractiveRoom
+            ? "interactive-view"
+            : "room-editor-view"
+      }`}
     >
       <div className="header">
-        <h1>Code Editor / Interactive Room</h1>
-        <button className="view-toggle-button" onClick={toggleView}>
+        <h1>
           {activeView === View.CodeEditor
-            ? "Switch to Interactive Room"
-            : "Switch to Code Editor"}
-        </button>
+            ? "Code Editor"
+            : activeView === View.InteractiveRoom
+              ? "Interactive Room"
+              : "Room Editor"}
+        </h1>
+
+        <div className="header-buttons">
+          {activeView !== View.RoomEditor && (
+            <button
+              className="room-editor-button"
+              onClick={switchToRoomEditor}
+              title="Open the Room Editor to create your own escape rooms"
+            >
+              Room Editor
+            </button>
+          )}
+
+          <button className="view-toggle-button" onClick={toggleView}>
+            {activeView === View.CodeEditor
+              ? "Switch to Interactive Room"
+              : activeView === View.InteractiveRoom
+                ? "Switch to Code Editor"
+                : "Return to Code Editor"}
+          </button>
+        </div>
       </div>
 
-      {activeView === View.CodeEditor ? (
+      {activeView === View.CodeEditor && (
         // Code Editor View
         <>
           <div className="controls">
@@ -212,7 +252,9 @@ const App: React.FC = () => {
             <OutputView output={output} />
           </div>
         </>
-      ) : (
+      )}
+
+      {activeView === View.InteractiveRoom && (
         // Interactive Room View with Monaco editor sidebar
         <div className="interactive-room-with-editor" ref={interactiveRoomRef}>
           <div className="interactive-room-container">
@@ -268,6 +310,11 @@ const App: React.FC = () => {
             </>
           )}
         </div>
+      )}
+
+      {activeView === View.RoomEditor && (
+        // Room Editor View
+        <RoomEditor />
       )}
     </div>
   );
