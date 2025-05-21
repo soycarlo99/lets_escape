@@ -795,246 +795,255 @@ Your function should return: ${area.expectedValue}`);
       {isInfoPanelOpen && selectedArea && (
         <div className="info-panel-modal-overlay" onClick={closeInfoPanel}>
           <div className="info-panel" onClick={(e) => e.stopPropagation()}>
-          <button
+            <button
               onClick={closeInfoPanel}
-            style={{
-              position: "absolute",
-              top: "10px",
-              right: "10px",
-              background: "none",
-              border: "none",
-              color: "white",
-              fontSize: "18px",
-              cursor: "pointer",
-            }}
-          >
-            ✕
-          </button>
-
-          <h3
-            style={{
-              margin: "0 0 15px 0",
-              color: completedPuzzles.has(selectedArea.id)
-                ? "#7FFF7F"
-                : "#ffd700",
-              fontSize: "22px",
-            }}
-          >
-            {selectedArea.name} {completedPuzzles.has(selectedArea.id) && "✓"}
-            <span
               style={{
-                fontSize: "12px",
-                color: "#aaa",
-                marginLeft: "10px",
-                textTransform: "uppercase",
-                letterSpacing: "1px",
+                position: "absolute",
+                top: "10px",
+                right: "10px",
+                background: "none",
+                border: "none",
+                color: "white",
+                fontSize: "18px",
+                cursor: "pointer",
               }}
             >
-              [{selectedArea.areaType}]
-            </span>
-          </h3>
+              ✕
+            </button>
 
-          <div style={{ marginBottom: "15px", lineHeight: "1.6" }}>
-            {selectedArea.description || "No description available."}
-          </div>
-
-          {/* Enhanced puzzle info display */}
-          {selectedArea.areaType === "puzzle" && (
-            <div
+            <h3
               style={{
-                marginTop: "15px",
-                padding: "15px",
-                background:
-                  "linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05))",
-                borderLeft: "4px solid #ffd700",
-                borderRadius: "8px",
+                margin: "0 0 15px 0",
+                color: completedPuzzles.has(selectedArea.id)
+                  ? "#7FFF7F"
+                  : "#ffd700",
+                fontSize: "22px",
               }}
             >
-              <div
+              {selectedArea.name} {completedPuzzles.has(selectedArea.id) && "✓"}
+              <span
                 style={{
-                  marginBottom: "10px",
-                  color: "#ffd700",
-                  fontWeight: "bold",
-                  fontSize: "14px",
-                }}
-              >
-                🎯 ACTIVE PUZZLE: {selectedArea.name.toUpperCase()}
-              </div>
-
-              <div
-                style={{
-                  marginBottom: "10px",
-                  fontSize: "13px",
-                  lineHeight: "1.4",
-                }}
-              >
-                {selectedArea.description}
-              </div>
-
-              {selectedArea.expectedValue !== undefined && (
-                <div
-                  style={{
-                    marginBottom: "10px",
-                    padding: "8px",
-                    backgroundColor: "rgba(0, 0, 0, 0.3)",
-                    borderRadius: "4px",
-                    fontSize: "12px",
-                  }}
-                >
-                  <strong>🎲 Expected Result:</strong>{" "}
-                  {String(selectedArea.expectedValue)} (
-                  {typeof selectedArea.expectedValue})
-                </div>
-              )}
-
-              <div
-                style={{
-                  padding: "10px",
-                  backgroundColor: "rgba(0, 255, 0, 0.1)",
-                  borderRadius: "4px",
                   fontSize: "12px",
-                  border: "1px solid rgba(0, 255, 0, 0.3)",
+                  color: "#aaa",
+                  marginLeft: "10px",
+                  textTransform: "uppercase",
+                  letterSpacing: "1px",
                 }}
               >
-                <div style={{ fontWeight: "bold", marginBottom: "5px" }}>
-                  📝 FUNCTION NAME: solution()
-                </div>
-                <div>
-                  ✅ Always use function name:{" "}
-                  <code style={{ color: "#0f0" }}>solution()</code>
-                  <br />
-                  ✅ No parameters required
-                  <br />
-                  ✅ Must return the expected value
-                  <br />✅ Same function name for all languages
-                </div>
-              </div>
+                [{selectedArea.areaType}]
+              </span>
+            </h3>
 
-              {selectedArea.codeTemplates &&
-                selectedArea.codeTemplates[currentLanguage] &&
-                !completedPuzzles.has(selectedArea.id) && (
-                  <div style={{ marginTop: "10px" }}>
-                    <button
-                      onClick={() => {
-                        if (onLoadCodeTemplate && selectedArea.codeTemplates) {
-                          onLoadCodeTemplate(
-                            selectedArea.codeTemplates[currentLanguage] || "",
-                          );
-                        }
-                      }}
-                      style={{
-                        width: "100%",
-                        padding: "10px",
-                        backgroundColor: "#ffd700",
-                        color: "black",
-                        border: "none",
-                        borderRadius: "6px",
-                        cursor: "pointer",
-                        fontWeight: "bold",
-                        fontSize: "13px",
-                      }}
-                    >
-                      📁 Load Template for {currentLanguage.toUpperCase()}
-                    </button>
-                  </div>
-                )}
-
-              {completedPuzzles.has(selectedArea.id) && (
-                <div
-                  style={{
-                    marginTop: "10px",
-                    padding: "10px",
-                    backgroundColor: "rgba(0, 255, 0, 0.1)",
-                    borderRadius: "6px",
-                    color: "#0f0",
-                    textAlign: "center",
-                    fontWeight: "bold",
-                  }}
-                >
-                  ✅ PUZZLE COMPLETED! 🎉
-                </div>
-              )}
+            <div style={{ marginBottom: "15px", lineHeight: "1.6" }}>
+              {selectedArea.description || "No description available."}
             </div>
-          )}
 
-          {/* Show data content for info/data areas */}
-          {(selectedArea.areaType === "info" ||
-            selectedArea.areaType === "data") &&
-            selectedArea.dataContent && (
+            {/* Enhanced puzzle info display */}
+            {selectedArea.areaType === "puzzle" && (
               <div
                 style={{
                   marginTop: "15px",
-                  padding: "10px",
-                  background: "rgba(255, 255, 255, 0.1)",
-                  borderLeft: "3px solid #4CAF50",
-                  borderRadius: "5px",
+                  padding: "15px",
+                  background:
+                    "linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05))",
+                  borderLeft: "4px solid #ffd700",
+                  borderRadius: "8px",
                 }}
               >
                 <div
                   style={{
                     marginBottom: "10px",
-                    color: "#4CAF50",
+                    color: "#ffd700",
                     fontWeight: "bold",
+                    fontSize: "14px",
                   }}
                 >
-                  DATA CONTENT ({selectedArea.dataType?.toUpperCase() || "TEXT"}
-                  ):
+                  🎯 ACTIVE PUZZLE: {selectedArea.name.toUpperCase()}
                 </div>
-                <pre
+
+                <div
                   style={{
-                    margin: 0,
-                    fontSize: "11px",
-                    whiteSpace: "pre-wrap",
-                    backgroundColor: "rgba(0, 0, 0, 0.5)",
-                    padding: "10px",
-                    borderRadius: "3px",
-                    maxHeight: "150px",
-                    overflow: "auto",
+                    marginBottom: "10px",
+                    fontSize: "13px",
+                    lineHeight: "1.4",
                   }}
                 >
-                  {typeof selectedArea.dataContent === "string"
-                    ? selectedArea.dataContent
-                    : JSON.stringify(selectedArea.dataContent, null, 2)}
-                </pre>
-                {selectedArea.processingHint && (
+                  {selectedArea.description}
+                </div>
+
+                {selectedArea.expectedValue !== undefined && (
+                  <div
+                    style={{
+                      marginBottom: "10px",
+                      padding: "8px",
+                      backgroundColor: "rgba(0, 0, 0, 0.3)",
+                      borderRadius: "4px",
+                      fontSize: "12px",
+                    }}
+                  >
+                    <strong>🎲 Expected Result:</strong>{" "}
+                    {String(selectedArea.expectedValue)} (
+                    {typeof selectedArea.expectedValue})
+                  </div>
+                )}
+
+                <div
+                  style={{
+                    padding: "10px",
+                    backgroundColor: "rgba(0, 255, 0, 0.1)",
+                    borderRadius: "4px",
+                    fontSize: "12px",
+                    border: "1px solid rgba(0, 255, 0, 0.3)",
+                  }}
+                >
+                  <div style={{ fontWeight: "bold", marginBottom: "5px" }}>
+                    📝 FUNCTION NAME: solution()
+                  </div>
+                  <div>
+                    ✅ Always use function name:{" "}
+                    <code style={{ color: "#0f0" }}>solution()</code>
+                    <br />
+                    ✅ No parameters required
+                    <br />
+                    ✅ Must return the expected value
+                    <br />✅ Same function name for all languages
+                  </div>
+                </div>
+
+                {completedPuzzles.has(selectedArea.id) && (
                   <div
                     style={{
                       marginTop: "10px",
-                      padding: "8px",
-                      backgroundColor: "rgba(255, 215, 0, 0.2)",
-                      borderRadius: "3px",
-                      fontSize: "12px",
-                      color: "#ffd700",
+                      padding: "10px",
+                      backgroundColor: "rgba(0, 255, 0, 0.1)",
+                      borderRadius: "6px",
+                      color: "#0f0",
+                      textAlign: "center",
+                      fontWeight: "bold",
                     }}
                   >
-                    💡 Hint: {selectedArea.processingHint}
+                    ✅ PUZZLE COMPLETED! 🎉
                   </div>
                 )}
               </div>
             )}
 
-          {/* Check Solution button for puzzle areas */}
-          {selectedArea.areaType === "puzzle" &&
-            selectedArea.expectedValue !== undefined &&
-            !completedPuzzles.has(selectedArea.id) && (
-              <button
-                onClick={() => checkSolution(selectedArea)}
-                style={{
-                  width: "100%",
-                  marginTop: "15px",
-                  padding: "10px",
-                  backgroundColor: "#4CAF50",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                  fontSize: "14px",
-                }}
-              >
-                🔍 Check Solution
-              </button>
-            )}
+            {/* Show data content for info/data areas */}
+            {(selectedArea.areaType === "info" ||
+              selectedArea.areaType === "data") &&
+              selectedArea.dataContent && (
+                <div
+                  style={{
+                    marginTop: "15px",
+                    padding: "10px",
+                    background: "rgba(255, 255, 255, 0.1)",
+                    borderLeft: "3px solid #4CAF50",
+                    borderRadius: "5px",
+                  }}
+                >
+                  <div
+                    style={{
+                      marginBottom: "10px",
+                      color: "#4CAF50",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    DATA CONTENT (
+                    {selectedArea.dataType?.toUpperCase() || "TEXT"}
+                    ):
+                  </div>
+                  <pre
+                    style={{
+                      margin: 0,
+                      fontSize: "11px",
+                      whiteSpace: "pre-wrap",
+                      backgroundColor: "rgba(0, 0, 0, 0.5)",
+                      padding: "10px",
+                      borderRadius: "3px",
+                      maxHeight: "150px",
+                      overflow: "auto",
+                    }}
+                  >
+                    {typeof selectedArea.dataContent === "string"
+                      ? selectedArea.dataContent
+                      : JSON.stringify(selectedArea.dataContent, null, 2)}
+                  </pre>
+                  {selectedArea.processingHint && (
+                    <div
+                      style={{
+                        marginTop: "10px",
+                        padding: "8px",
+                        backgroundColor: "rgba(255, 215, 0, 0.2)",
+                        borderRadius: "3px",
+                        fontSize: "12px",
+                        color: "#ffd700",
+                      }}
+                    >
+                      💡 Hint: {selectedArea.processingHint}
+                    </div>
+                  )}
+                </div>
+              )}
+
+            {/* FIXED: Button container to place buttons side by side */}
+            <div
+              style={{
+                display: "flex",
+                gap: "10px",
+                marginTop: "15px",
+                justifyContent: "space-between",
+              }}
+            >
+              {/* Template load button */}
+              {selectedArea.codeTemplates &&
+                selectedArea.codeTemplates[currentLanguage] &&
+                !completedPuzzles.has(selectedArea.id) && (
+                  <button
+                    onClick={() => {
+                      if (onLoadCodeTemplate && selectedArea.codeTemplates) {
+                        onLoadCodeTemplate(
+                          selectedArea.codeTemplates[currentLanguage] || "",
+                        );
+                      }
+                    }}
+                    style={{
+                      flex: "1",
+                      padding: "10px",
+                      backgroundColor: "#ffd700",
+                      color: "black",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontWeight: "bold",
+                      fontSize: "13px",
+                    }}
+                  >
+                    📁 Load Template for {currentLanguage.toUpperCase()}
+                  </button>
+                )}
+
+              {/* Check Solution button */}
+              {selectedArea.areaType === "puzzle" &&
+                selectedArea.expectedValue !== undefined &&
+                !completedPuzzles.has(selectedArea.id) && (
+                  <button
+                    onClick={() => checkSolution(selectedArea)}
+                    style={{
+                      flex: "1",
+                      padding: "10px",
+                      backgroundColor: "#4CAF50",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontWeight: "bold",
+                      fontSize: "14px",
+                    }}
+                  >
+                    🔍 Check Solution
+                  </button>
+                )}
+            </div>
           </div>
         </div>
       )}
