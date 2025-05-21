@@ -10,7 +10,7 @@ html {
 
 /* App container base styles */
 .app-container {
-  width: 100%;
+  width: 100vw;
   height: 100vh;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
@@ -18,6 +18,7 @@ html {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 
 .app-container.code-editor-view {
@@ -32,4 +33,6 @@ html {
   max-width: 100%;
   padding: 0;
   margin: 0;
+  height: 100vh;
+  width: 100vw;
 } 

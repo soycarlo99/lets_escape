@@ -5,7 +5,7 @@ import { LanguageSelector } from "./components/LanguageSelector";
 import { ClickableImage } from "./components/ClickableImage";
 import { clickableAreas, ClickableArea } from "./types/clickableAreas";
 import { executeCode } from "./utils/codeExecution";
-import './styles/main.css';
+import "./styles/main.css";
 
 // Define types
 export type Language =
@@ -29,7 +29,8 @@ const App: React.FC = () => {
   const [activeView, setActiveView] = useState<View>(View.CodeEditor);
 
   // State variables
-  const [currentLanguage, setCurrentLanguage] = useState<Language>("javascript");
+  const [currentLanguage, setCurrentLanguage] =
+    useState<Language>("javascript");
   const [currentCode, setCurrentCode] = useState<string>(
     '// Write your code here\nconsole.log("Hello, world!");',
   );
@@ -46,34 +47,48 @@ const App: React.FC = () => {
   // Effect to update editor content based on language
   useEffect(() => {
     // Default code for each language
-    switch (currentLanguage) {
-      case "javascript":
-        setCurrentCode('// Write your JavaScript code here\nconsole.log("Hello, world!");');
-        break;
-      case "python":
+      switch (currentLanguage) {
+        case "javascript":
+          setCurrentCode(
+            '// Write your JavaScript code here\nconsole.log("Hello, world!");',
+          );
+          break;
+        case "python":
         setCurrentCode('# Write your Python code here\nprint("Hello, world!")');
-        break;
-      case "java":
-        setCurrentCode('// Write your Java code here\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, world!");\n    }\n}');
-        break;
-      case "cpp":
-        setCurrentCode('// Write your C++ code here\n#include <iostream>\n\nint main() {\n    std::cout << "Hello, world!" << std::endl;\n    return 0;\n}');
-        break;
-      case "csharp":
-        setCurrentCode('// Write your C# code here\nusing System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello, world!");\n    }\n}');
-        break;
-      case "go":
-        setCurrentCode('// Write your Go code here\npackage main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, world!")\n}');
-        break;
-      case "rust":
-        setCurrentCode('// Write your Rust code here\nfn main() {\n    println!("Hello, world!");\n}');
-        break;
-      case "typescript":
-        setCurrentCode('// Write your TypeScript code here\nfunction greet(name: string): string {\n    return `Hello, ${name}!`;\n}\n\nconsole.log(greet("world"));');
-        break;
-      default:
-        setCurrentCode("// Write your code here");
-    }
+          break;
+        case "java":
+          setCurrentCode(
+            '// Write your Java code here\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, world!");\n    }\n}',
+          );
+          break;
+        case "cpp":
+          setCurrentCode(
+            '// Write your C++ code here\n#include <iostream>\n\nint main() {\n    std::cout << "Hello, world!" << std::endl;\n    return 0;\n}',
+          );
+          break;
+        case "csharp":
+          setCurrentCode(
+            '// Write your C# code here\nusing System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello, world!");\n    }\n}',
+          );
+          break;
+        case "go":
+          setCurrentCode(
+            '// Write your Go code here\npackage main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, world!")\n}',
+          );
+          break;
+        case "rust":
+          setCurrentCode(
+            '// Write your Rust code here\nfn main() {\n    println!("Hello, world!");\n}',
+          );
+          break;
+        case "typescript":
+          setCurrentCode(
+            '// Write your TypeScript code here\nfunction greet(name: string): string {\n    return `Hello, ${name}!`;\n}\n\nconsole.log(greet("world"));',
+          );
+          break;
+        default:
+          setCurrentCode("// Write your code here");
+      }
   }, [currentLanguage]);
 
   const handleLanguageChange = (language: Language) => {
@@ -96,9 +111,9 @@ const App: React.FC = () => {
     }
 
     try {
-      // Regular code execution
-      const output = await executeCode(currentCode, currentLanguage);
-      setOutput(output);
+        // Regular code execution
+        const output = await executeCode(currentCode, currentLanguage);
+        setOutput(output);
     } catch (error: any) {
       setOutput(`Error: ${error.message}`);
     }
@@ -203,9 +218,6 @@ const App: React.FC = () => {
           <div className="interactive-room-container">
             <h2>Interactive Room</h2>
             <p>Click on objects in the room to interact with them</p>
-            <button className="sidebar-toggle" onClick={toggleSidebar}>
-              {showSidebar ? "Hide Editor" : "Show Editor"}
-            </button>
             <ClickableImage
               imageSrc="/haunted-room.jpg"
               areas={clickableAreas}
@@ -215,6 +227,9 @@ const App: React.FC = () => {
               onSelectArea={setSelectedArea}
             />
           </div>
+          <button className="sidebar-toggle" onClick={toggleSidebar}>
+            {showSidebar ? "Hide Editor" : "Show Editor"}
+          </button>
 
           {showSidebar && (
             <>
@@ -231,9 +246,6 @@ const App: React.FC = () => {
                     currentLanguage={currentLanguage}
                     onLanguageChange={handleLanguageChange}
                   />
-                  <button className="run-button" onClick={runCode}>
-                    Run Code
-                  </button>
                 </div>
 
                 <div className="sidebar-editor">
@@ -244,6 +256,9 @@ const App: React.FC = () => {
                     editorRef={editorRef}
                     currentArea={selectedArea}
                   />
+                  <button className="run-button" onClick={runCode}>
+                    Run Code
+                  </button>
                 </div>
 
                 <div className="sidebar-output">

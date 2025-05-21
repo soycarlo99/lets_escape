@@ -43,7 +43,7 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
 
   // Panel states
   const [selectedArea, setSelectedArea] = useState<ClickableArea | null>(null);
-  const [showInfoPanel, setShowInfoPanel] = useState(false);
+  const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false);
   const [showDataPanel, setShowDataPanel] = useState(false);
 
   // Completed puzzles tracking
@@ -64,6 +64,8 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
 
     // Set the selected area
     setSelectedArea(area);
+    setIsInfoPanelOpen(true);
+    setShowDataPanel(area.areaType === "data");
 
     // Notify parent component
     if (onSelectArea) {
@@ -94,6 +96,7 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
   const handlePhotoArea = (area: ClickableArea) => {
     if (!area.detailImage) {
       alert(`${area.name} doesn't have a detailed view available.`);
+      setIsInfoPanelOpen(false);
       return;
     }
 
@@ -114,15 +117,13 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
       setCurrentAreas(area.nestedAreas || []);
       setIsTransitioning(false);
     }, 500); // Smooth fade transition
-
-    // Show info panel with description
-    setShowInfoPanel(true);
   };
 
   // Handle puzzle areas - load into editor
   const handlePuzzleArea = (area: ClickableArea) => {
     if (!area.puzzleSpec) {
       alert(`${area.name} doesn't have a puzzle to solve.`);
+      setIsInfoPanelOpen(false);
       return;
     }
 
@@ -140,14 +141,11 @@ export const ClickableImage: React.FC<ClickableImageProps> = ({
     ) {
       onLoadCodeTemplate(area.codeTemplates[currentLanguage]);
     }
-
-    // Show info panel with puzzle description
-    setShowInfoPanel(true);
   };
 
   // Handle info areas - display information
   const handleInfoArea = (area: ClickableArea) => {
-    setShowInfoPanel(true);
+    // Info panel is now opened by handleAreaClick
 
     // If the area has data content, also provide it to the parent
     if (area.dataContent && onLoadData) {
@@ -168,8 +166,7 @@ ${typeof area.dataContent === "string" ? area.dataContent : JSON.stringify(area.
 
   // Handle data areas - provide data for processing
   const handleDataArea = (area: ClickableArea) => {
-    setShowDataPanel(true);
-    setShowInfoPanel(true);
+    // Info panel and data panel are now opened by handleAreaClick
 
     if (area.dataContent && onLoadData) {
       // Create a template with the data embedded
@@ -265,17 +262,20 @@ function solution() {
           alert(
             `You examine the ${area.name}. It reflects a distorted image of yourself.`,
           );
+          setIsInfoPanelOpen(false);
         }
         break;
       case "door":
         if (completedPuzzles.has(area.id)) {
           alert(`The ${area.name} unlocks and swings open!`);
+          setIsInfoPanelOpen(false);
         } else {
           handlePuzzleArea(area);
         }
         break;
       default:
         alert(getAreaAction(area));
+        setIsInfoPanelOpen(false);
     }
   };
 
@@ -299,7 +299,7 @@ function solution() {
     }, 500);
 
     // Close panels when going back
-    setShowInfoPanel(false);
+    setIsInfoPanelOpen(false);
     setShowDataPanel(false);
   };
 
@@ -437,7 +437,7 @@ Your answer: ${result}
 Expected: ${area.expectedValue}
 
 Great job! The puzzle is now complete.`);
-          setShowInfoPanel(false);
+          setIsInfoPanelOpen(false);
         } else {
           alert(`❌ Not quite right. Try again!
 
@@ -498,7 +498,7 @@ Your answer: ${result.actual}
 Expected: ${result.expected}
 
 Great job! The puzzle is now complete.`);
-              setShowInfoPanel(false);
+              setIsInfoPanelOpen(false);
             } else {
               alert(`❌ Not quite right. Try again!
 
@@ -662,6 +662,12 @@ Your function should return: ${area.expectedValue}`);
     return currentImage || imageSrc || "/haunted-room.jpg";
   };
 
+  // Function to close the info panel
+  const closeInfoPanel = () => {
+    setIsInfoPanelOpen(false);
+    setSelectedArea(null);
+  };
+
   return (
     <div ref={containerRef} className="clickable-image-container">
       {/* Main image */}
@@ -785,28 +791,12 @@ Your function should return: ${area.expectedValue}`);
         />
       )}
 
-      {/* Enhanced Info Panel */}
-      {showInfoPanel && selectedArea && (
-        <div
-          className="info-panel"
-          style={{
-            position: "fixed",
-            bottom: "100px",
-            right: "20px",
-            width: "350px",
-            maxHeight: "60vh",
-            overflowY: "auto",
-            backgroundColor: "rgba(0, 0, 0, 0.9)",
-            color: "white",
-            padding: "20px",
-            borderRadius: "10px",
-            border: "2px solid #555",
-            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.7)",
-            zIndex: 999,
-          }}
-        >
+      {/* Info Panel Modal */}
+      {isInfoPanelOpen && selectedArea && (
+        <div className="info-panel-modal-overlay" onClick={closeInfoPanel}>
+          <div className="info-panel" onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={() => setShowInfoPanel(false)}
+              onClick={closeInfoPanel}
             style={{
               position: "absolute",
               top: "10px",
@@ -1045,6 +1035,7 @@ Your function should return: ${area.expectedValue}`);
                 🔍 Check Solution
               </button>
             )}
+          </div>
         </div>
       )}
 

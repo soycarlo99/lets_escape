@@ -9,10 +9,25 @@
   z-index: 10;
 }
 
+.app-container.interactive-view .header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  margin: 0;
+  padding: 15px 20px;
+  z-index: 1000;
+}
+
 .header h1 {
   margin: 0;
   font-size: 24px;
   color: #333;
+}
+
+.app-container.interactive-view .header h1 {
+  color: white;
 }
 
 .view-toggle-button {
