@@ -1,0 +1,114 @@
+/* Editor & Output styles */
+.editor-output-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 70vh;
+  min-height: 500px;
+}
+
+.editor-container {
+  flex: 1;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.editor {
+  height: 100%;
+  width: 100%;
+}
+
+.output-container {
+  height: 300px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: auto;
+  background-color: #1e1e1e;
+}
+
+.output-header {
+  padding: 8px 12px;
+  font-weight: 600;
+  background-color: #eee;
+  border-bottom: 1px solid #ddd;
+}
+
+.output {
+  padding: 12px;
+  font-family: monospace;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.output pre {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* Test Results styles */
+.test-results {
+  margin-top: 10px;
+  font-family: sans-serif;
+}
+
+.test-success {
+  color: #4caf50;
+  font-weight: bold;
+  padding: 10px;
+  background-color: #e8f5e9;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.test-failure {
+  color: #f44336;
+  font-weight: bold;
+  padding: 10px;
+  background-color: #ffebee;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.test-note {
+  background-color: #f8f9fa;
+  padding: 8px 12px;
+  border-left: 3px solid #2196f3;
+  margin: 10px 0;
+  font-size: 0.9em;
+  color: #555;
+}
+
+.test-details {
+  margin-top: 15px;
+}
+
+.test-case {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.test-header {
+  padding: 8px 12px;
+  font-weight: bold;
+}
+
+.test-case.passed .test-header {
+  background-color: #e8f5e9;
+  color: #4caf50;
+}
+
+.test-case.failed .test-header {
+  background-color: #ffebee;
+  color: #f44336;
+}
+
+.test-body {
+  padding: 12px;
+  background-color: #f9f9f9;
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+} 

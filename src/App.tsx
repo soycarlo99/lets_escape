@@ -12,7 +12,7 @@ import {
 import { ClickableImage } from "./components/ClickableImage";
 import { clickableAreas, ClickableArea } from "./types/clickableAreas";
 import { PuzzleSpec, generateTemplates } from "./utils/templateGenerator";
-import "./App.css";
+import './styles/main.css';
 
 // Define types
 export type Language =

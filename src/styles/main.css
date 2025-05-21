@@ -1,0 +1,10 @@
+/* Main CSS file that imports all modular styles */
+@import './base.css';
+@import './header.css';
+@import './controls.css';
+@import './editor.css';
+@import './interactive-room.css';
+@import './info-panel.css';
+@import './ui-elements.css';
+@import './animations.css';
+@import './responsive.css'; 

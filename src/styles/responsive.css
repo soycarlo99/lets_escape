@@ -1,0 +1,38 @@
+/* Responsive layout styles */
+@media (min-width: 768px) {
+  .editor-output-container {
+    flex-direction: row;
+  }
+  .editor-container {
+    flex: 3;
+  }
+  .output-container {
+    flex: 2;
+    height: auto;
+  }
+}
+
+/* Small screens adjustments */
+@media (max-width: 992px) {
+  .interactive-room-with-editor {
+    flex-direction: column;
+  }
+
+  .interactive-room-container {
+    flex: 1;
+    height: 50vh;
+  }
+
+  .editor-sidebar {
+    flex: 1;
+    min-width: 100%;
+    max-width: 100%;
+    border-left: none;
+    border-top: 1px solid #ddd;
+    height: 50vh;
+  }
+
+  .sidebar-editor {
+    flex: 2;
+  }
+} 
