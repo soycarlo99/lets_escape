@@ -18,6 +18,7 @@ export const PreviewRoom: React.FC<PreviewRoomProps> = ({
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
 
   // Update dimensions when image loads
   useEffect(() => {
@@ -83,8 +84,19 @@ export const PreviewRoom: React.FC<PreviewRoomProps> = ({
 
   // Render SVG shape for an area
   const renderShape = (area: ClickableArea) => {
+    if (!imageRef.current) return null;
+
     const isHovered = hoveredAreaId === area.id;
     const colors = getAreaTypeColor(area.areaType);
+
+    // Calculate scaling factors - this is key to correct display
+    const displayWidth = dimensions.width;
+    const displayHeight = dimensions.height;
+    const naturalWidth = imageRef.current.naturalWidth;
+    const naturalHeight = imageRef.current.naturalHeight;
+
+    const scaleX = displayWidth / naturalWidth;
+    const scaleY = displayHeight / naturalHeight;
 
     // Use custom colors if defined
     const fillColor = isHovered
@@ -112,14 +124,37 @@ export const PreviewRoom: React.FC<PreviewRoomProps> = ({
 
     if (area.shape === "rect") {
       const [x, y, width, height] = area.coords;
-      return <rect x={x} y={y} width={width} height={height} {...shapeProps} />;
+      // Scale coordinates from natural image size to display size
+      return (
+        <rect
+          x={x * scaleX}
+          y={y * scaleY}
+          width={width * scaleX}
+          height={height * scaleY}
+          {...shapeProps}
+        />
+      );
     } else if (area.shape === "circle") {
       const [cx, cy, r] = area.coords;
-      return <circle cx={cx} cy={cy} r={r} {...shapeProps} />;
+      // Scale coordinates from natural image size to display size
+      return (
+        <circle
+          cx={cx * scaleX}
+          cy={cy * scaleY}
+          r={r * scaleX}
+          {...shapeProps}
+        />
+      );
     } else if (area.shape === "poly") {
+      // Scale all polygon points
       const points = area.coords
-        .map((coord, i) => (i % 2 === 0 ? `${coord},` : coord))
+        .map((coord, i) => {
+          // Scale each coordinate based on whether it's x (even index) or y (odd index)
+          const scaledCoord = i % 2 === 0 ? coord * scaleX : coord * scaleY;
+          return i % 2 === 0 ? `${scaledCoord},` : scaledCoord;
+        })
         .join(" ");
+
       return <polygon points={points} {...shapeProps} />;
     }
 
@@ -144,33 +179,49 @@ export const PreviewRoom: React.FC<PreviewRoomProps> = ({
         {/* SVG overlay for interactive areas */}
         {dimensions.width > 0 && (
           <svg
+            ref={svgRef}
             width={dimensions.width}
             height={dimensions.height}
-            viewBox={`0 0 ${imageRef.current?.naturalWidth || dimensions.width} ${imageRef.current?.naturalHeight || dimensions.height}`}
+            viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
             className="preview-svg"
             preserveAspectRatio="xMidYMid slice"
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              pointerEvents: "none",
+            }}
           >
             {areas.map(renderShape)}
 
             {/* Tooltips */}
-            {hoveredAreaId && (
+            {hoveredAreaId && imageRef.current && (
               <g>
                 {areas
                   .filter((area) => area.id === hoveredAreaId && area.tooltip)
                   .map((area) => {
+                    // Calculate scaling factors
+                    const displayWidth = dimensions.width;
+                    const displayHeight = dimensions.height;
+                    const naturalWidth = imageRef.current!.naturalWidth;
+                    const naturalHeight = imageRef.current!.naturalHeight;
+
+                    const scaleX = displayWidth / naturalWidth;
+                    const scaleY = displayHeight / naturalHeight;
+
                     let tooltipX, tooltipY;
                     if (area.shape === "rect") {
                       const [x, y, width] = area.coords;
-                      tooltipX = x + width / 2;
-                      tooltipY = y - 10;
+                      tooltipX = (x + width / 2) * scaleX;
+                      tooltipY = y * scaleY - 10;
                     } else if (area.shape === "circle") {
                       const [cx, cy, r] = area.coords;
-                      tooltipX = cx;
-                      tooltipY = cy - r - 10;
+                      tooltipX = cx * scaleX;
+                      tooltipY = (cy - r) * scaleY - 10;
                     } else {
                       // For polygons, use first point
-                      tooltipX = area.coords[0];
-                      tooltipY = area.coords[1] - 10;
+                      tooltipX = area.coords[0] * scaleX;
+                      tooltipY = area.coords[1] * scaleY - 10;
                     }
 
                     return (

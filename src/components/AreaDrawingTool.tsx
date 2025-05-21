@@ -22,7 +22,6 @@ export const AreaDrawingTool: React.FC<AreaDrawingToolProps> = ({
   const [areaType, setAreaType] = useState<AreaType>("info");
   const [areaName, setAreaName] = useState("");
   const [points, setPoints] = useState<{ x: number; y: number }[]>([]);
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   // For polygon drawing
   const [isDrawingPolygon, setIsDrawingPolygon] = useState(false);
@@ -38,12 +37,6 @@ export const AreaDrawingTool: React.FC<AreaDrawingToolProps> = ({
       if (imageRef.current && canvasRef.current && containerRef.current) {
         // Get the display size of the image
         const rect = imageRef.current.getBoundingClientRect();
-
-        // Update state with these dimensions
-        setDimensions({
-          width: rect.width,
-          height: rect.height,
-        });
 
         // Make the canvas match the displayed image size exactly
         canvasRef.current.width = rect.width;
@@ -71,7 +64,7 @@ export const AreaDrawingTool: React.FC<AreaDrawingToolProps> = ({
 
   // Draw all existing areas on the canvas
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || !imageRef.current) return;
 
     const ctx = canvasRef.current.getContext("2d");
     if (!ctx) return;
@@ -79,40 +72,51 @@ export const AreaDrawingTool: React.FC<AreaDrawingToolProps> = ({
     // Clear canvas
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
 
-    // Calculate scale if image dimensions are known
-    const scaleX = imageRef.current?.naturalWidth
-      ? canvasRef.current.width / imageRef.current.naturalWidth
-      : 1;
-    const scaleY = imageRef.current?.naturalHeight
-      ? canvasRef.current.height / imageRef.current.naturalHeight
-      : 1;
+    // Calculate scale factors between original image and displayed image
+    const displayWidth = canvasRef.current.width;
+    const displayHeight = canvasRef.current.height;
+    const naturalWidth = imageRef.current.naturalWidth;
+    const naturalHeight = imageRef.current.naturalHeight;
+
+    const scaleX = naturalWidth / displayWidth;
+    const scaleY = naturalHeight / displayHeight;
 
     // Draw existing areas
     areas.forEach((area, index) => {
       ctx.strokeStyle = "#00FF00";
       ctx.lineWidth = 2;
 
+      // Convert original image coordinates to display coordinates
       if (area.shape === "rect") {
         const [x, y, width, height] = area.coords;
-        ctx.strokeRect(x * scaleX, y * scaleY, width * scaleX, height * scaleY);
+        const displayX = x / scaleX;
+        const displayY = y / scaleY;
+        const displayWidth = width / scaleX;
+        const displayHeight = height / scaleY;
+
+        ctx.strokeRect(displayX, displayY, displayWidth, displayHeight);
 
         // Add label
         ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-        ctx.fillRect(x * scaleX, y * scaleY - 20, area.name.length * 8, 20);
+        ctx.fillRect(displayX, displayY - 20, area.name.length * 8, 20);
         ctx.fillStyle = "#FFFFFF";
         ctx.font = "12px Arial";
-        ctx.fillText(area.name, x * scaleX + 5, y * scaleY - 5);
+        ctx.fillText(area.name, displayX + 5, displayY - 5);
       } else if (area.shape === "circle") {
         const [cx, cy, radius] = area.coords;
+        const displayCx = cx / scaleX;
+        const displayCy = cy / scaleY;
+        const displayRadius = radius / scaleX;
+
         ctx.beginPath();
-        ctx.arc(cx * scaleX, cy * scaleY, radius * scaleX, 0, Math.PI * 2);
+        ctx.arc(displayCx, displayCy, displayRadius, 0, Math.PI * 2);
         ctx.stroke();
 
         // Add label
         ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
         ctx.fillRect(
-          cx * scaleX - area.name.length * 4,
-          cy * scaleY - radius * scaleY - 20,
+          displayCx - area.name.length * 4,
+          displayCy - displayRadius - 20,
           area.name.length * 8,
           20,
         );
@@ -120,17 +124,24 @@ export const AreaDrawingTool: React.FC<AreaDrawingToolProps> = ({
         ctx.font = "12px Arial";
         ctx.fillText(
           area.name,
-          cx * scaleX - area.name.length * 4 + 5,
-          cy * scaleY - radius * scaleY - 5,
+          displayCx - area.name.length * 4 + 5,
+          displayCy - displayRadius - 5,
         );
       } else if (area.shape === "poly") {
         if (area.coords.length < 6) return; // Need at least 3 points for a polygon
 
         ctx.beginPath();
-        ctx.moveTo(area.coords[0] * scaleX, area.coords[1] * scaleY);
 
+        // Convert first point
+        const firstX = area.coords[0] / scaleX;
+        const firstY = area.coords[1] / scaleY;
+        ctx.moveTo(firstX, firstY);
+
+        // Convert and draw all points
         for (let i = 2; i < area.coords.length; i += 2) {
-          ctx.lineTo(area.coords[i] * scaleX, area.coords[i + 1] * scaleY);
+          const pointX = area.coords[i] / scaleX;
+          const pointY = area.coords[i + 1] / scaleY;
+          ctx.lineTo(pointX, pointY);
         }
 
         ctx.closePath();
@@ -138,38 +149,28 @@ export const AreaDrawingTool: React.FC<AreaDrawingToolProps> = ({
 
         // Add label near the first point
         ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-        ctx.fillRect(
-          area.coords[0] * scaleX,
-          area.coords[1] * scaleY - 20,
-          area.name.length * 8,
-          20,
-        );
+        ctx.fillRect(firstX, firstY - 20, area.name.length * 8, 20);
         ctx.fillStyle = "#FFFFFF";
         ctx.font = "12px Arial";
-        ctx.fillText(
-          area.name,
-          area.coords[0] * scaleX + 5,
-          area.coords[1] * scaleY - 5,
-        );
+        ctx.fillText(area.name, firstX + 5, firstY - 5);
       }
 
       // Add number indicator for easier selection
       ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
       ctx.beginPath();
-      ctx.arc(
-        area.coords[0] * scaleX - 10,
-        area.coords[1] * scaleY - 10,
-        10,
-        0,
-        Math.PI * 2,
-      );
+
+      // Convert coordinates for the number indicator
+      const indicatorX = area.coords[0] / scaleX - 10;
+      const indicatorY = area.coords[1] / scaleY - 10;
+
+      ctx.arc(indicatorX, indicatorY, 10, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = "#FFFFFF";
       ctx.font = "10px Arial";
       ctx.fillText(
         (index + 1).toString(),
-        area.coords[0] * scaleX - 14 + (index + 1 < 10 ? 3 : 0),
-        area.coords[1] * scaleY - 7,
+        indicatorX - 3 + (index + 1 < 10 ? 3 : 0),
+        indicatorY + 3,
       );
     });
 
@@ -223,17 +224,9 @@ export const AreaDrawingTool: React.FC<AreaDrawingToolProps> = ({
         ctx.stroke();
       }
     }
-  }, [
-    areas,
-    isDrawing,
-    isDrawingPolygon,
-    startPoint,
-    endPoint,
-    points,
-    dimensions,
-  ]);
+  }, [areas, isDrawing, isDrawingPolygon, startPoint, endPoint, points, shape]);
 
-  // Handle mouse down to start drawing - FIXED for correct positioning
+  // Handle mouse down to start drawing
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current || !imageRef.current) return;
 
@@ -241,13 +234,17 @@ export const AreaDrawingTool: React.FC<AreaDrawingToolProps> = ({
     const rect = canvas.getBoundingClientRect();
 
     // Get the mouse position relative to the canvas
-    // Use clientX/Y for accurate position
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Check if user clicked on an existing area for selection
-    const scaleX = imageRef.current.naturalWidth / canvas.width;
-    const scaleY = imageRef.current.naturalHeight / canvas.height;
+    // Calculate scale factors
+    const displayWidth = canvas.width;
+    const displayHeight = canvas.height;
+    const naturalWidth = imageRef.current.naturalWidth;
+    const naturalHeight = imageRef.current.naturalHeight;
+
+    const scaleX = naturalWidth / displayWidth;
+    const scaleY = naturalHeight / displayHeight;
 
     // Convert to original image coordinates for hit testing
     const imageX = x * scaleX;
@@ -293,7 +290,7 @@ export const AreaDrawingTool: React.FC<AreaDrawingToolProps> = ({
     setEndPoint({ x, y });
   };
 
-  // Handle mouse move during drawing - FIXED for correct positioning
+  // Handle mouse move during drawing
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
 
@@ -356,14 +353,18 @@ export const AreaDrawingTool: React.FC<AreaDrawingToolProps> = ({
     return false;
   };
 
-  // Finish drawing a shape - FIXED for correct scaling
+  // Finish drawing a shape
   const finishShape = () => {
     if (!imageRef.current || !canvasRef.current) return;
 
     // Calculate scale factors to convert to original image coordinates
-    // Use the canvas dimensions rather than state dimensions
-    const scaleX = imageRef.current.naturalWidth / canvasRef.current.width;
-    const scaleY = imageRef.current.naturalHeight / canvasRef.current.height;
+    const displayWidth = canvasRef.current.width;
+    const displayHeight = canvasRef.current.height;
+    const naturalWidth = imageRef.current.naturalWidth;
+    const naturalHeight = imageRef.current.naturalHeight;
+
+    const scaleX = naturalWidth / displayWidth;
+    const scaleY = naturalHeight / displayHeight;
 
     let coords: number[] = [];
 
@@ -413,13 +414,18 @@ export const AreaDrawingTool: React.FC<AreaDrawingToolProps> = ({
     setIsDrawing(false);
   };
 
-  // Finish drawing a polygon - FIXED for correct scaling
+  // Finish drawing a polygon
   const finishPolygon = () => {
     if (!imageRef.current || !canvasRef.current || points.length < 3) return;
 
     // Calculate scale factors to convert to original image coordinates
-    const scaleX = imageRef.current.naturalWidth / canvasRef.current.width;
-    const scaleY = imageRef.current.naturalHeight / canvasRef.current.height;
+    const displayWidth = canvasRef.current.width;
+    const displayHeight = canvasRef.current.height;
+    const naturalWidth = imageRef.current.naturalWidth;
+    const naturalHeight = imageRef.current.naturalHeight;
+
+    const scaleX = naturalWidth / displayWidth;
+    const scaleY = naturalHeight / displayHeight;
 
     // Convert points to flat array of coordinates in original image space
     const coords: number[] = [];
@@ -544,6 +550,7 @@ export const AreaDrawingTool: React.FC<AreaDrawingToolProps> = ({
           src={imageSrc}
           alt="Room Background"
           className="drawing-image"
+          style={{ display: "block", maxWidth: "100%" }}
         />
         <canvas
           ref={canvasRef}
@@ -552,8 +559,7 @@ export const AreaDrawingTool: React.FC<AreaDrawingToolProps> = ({
             position: "absolute",
             top: 0,
             left: 0,
-            width: "100%",
-            height: "100%",
+            pointerEvents: "all",
             cursor: isDrawingPolygon ? "crosshair" : "default",
           }}
           onMouseDown={handleMouseDown}
