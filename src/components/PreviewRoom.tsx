@@ -14,36 +14,43 @@ export const PreviewRoom: React.FC<PreviewRoomProps> = ({
   const [hoveredAreaId, setHoveredAreaId] = useState<string | null>(null);
   const [selectedArea, setSelectedArea] = useState<ClickableArea | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [offset, setOffset] = useState({ left: 0, top: 0 });
+
+  // State for image natural size and rendered size
+  const [naturalSize, setNaturalSize] = useState({ width: 16, height: 9 });
+  const [renderedSize, setRenderedSize] = useState({ width: 0, height: 0 });
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // Update dimensions when image loads
+  // Track image natural and rendered size
   useEffect(() => {
-    const updateDimensions = () => {
+    setImageLoaded(false);
+    const updateSizes = () => {
       if (imageRef.current) {
-        const rect = imageRef.current.getBoundingClientRect();
-        setDimensions({
-          width: rect.width,
-          height: rect.height,
+        setNaturalSize({
+          width: imageRef.current.naturalWidth,
+          height: imageRef.current.naturalHeight,
         });
+        const rect = imageRef.current.getBoundingClientRect();
+        setRenderedSize({ width: rect.width, height: rect.height });
+        setImageLoaded(true);
       }
     };
-
-    // Update on image load
     if (imageRef.current) {
-      if (imageRef.current.complete) {
-        updateDimensions();
-      } else {
-        imageRef.current.onload = updateDimensions;
-      }
+      imageRef.current.onload = updateSizes;
+      if (imageRef.current.complete) updateSizes();
+      const resizeObserver = new window.ResizeObserver(updateSizes);
+      resizeObserver.observe(imageRef.current);
+      window.addEventListener("resize", updateSizes);
+      return () => {
+        resizeObserver.disconnect();
+        window.removeEventListener("resize", updateSizes);
+      };
     }
-
-    // Update on window resize
-    window.addEventListener("resize", updateDimensions);
-    return () => window.removeEventListener("resize", updateDimensions);
   }, [imageSrc]);
 
   // Handle area click
@@ -84,29 +91,14 @@ export const PreviewRoom: React.FC<PreviewRoomProps> = ({
 
   // Render SVG shape for an area
   const renderShape = (area: ClickableArea) => {
-    if (!imageRef.current) return null;
-
     const isHovered = hoveredAreaId === area.id;
     const colors = getAreaTypeColor(area.areaType);
-
-    // Calculate scaling factors - this is key to correct display
-    const displayWidth = dimensions.width;
-    const displayHeight = dimensions.height;
-    const naturalWidth = imageRef.current.naturalWidth;
-    const naturalHeight = imageRef.current.naturalHeight;
-
-    const scaleX = displayWidth / naturalWidth;
-    const scaleY = displayHeight / naturalHeight;
-
-    // Use custom colors if defined
     const fillColor = isHovered
       ? area.fillColor || colors.fill
       : "rgba(0, 0, 0, 0)";
-
     const strokeColor = isHovered
       ? area.strokeColor || colors.stroke
       : "rgba(0, 0, 0, 0)";
-
     const shapeProps = {
       key: area.id,
       fill: fillColor,
@@ -121,43 +113,18 @@ export const PreviewRoom: React.FC<PreviewRoomProps> = ({
       onMouseEnter: () => setHoveredAreaId(area.id),
       onMouseLeave: () => setHoveredAreaId(null),
     };
-
     if (area.shape === "rect") {
       const [x, y, width, height] = area.coords;
-      // Scale coordinates from natural image size to display size
-      return (
-        <rect
-          x={x * scaleX}
-          y={y * scaleY}
-          width={width * scaleX}
-          height={height * scaleY}
-          {...shapeProps}
-        />
-      );
+      return <rect x={x} y={y} width={width} height={height} {...shapeProps} />;
     } else if (area.shape === "circle") {
       const [cx, cy, r] = area.coords;
-      // Scale coordinates from natural image size to display size
-      return (
-        <circle
-          cx={cx * scaleX}
-          cy={cy * scaleY}
-          r={r * scaleX}
-          {...shapeProps}
-        />
-      );
+      return <circle cx={cx} cy={cy} r={r} {...shapeProps} />;
     } else if (area.shape === "poly") {
-      // Scale all polygon points
       const points = area.coords
-        .map((coord, i) => {
-          // Scale each coordinate based on whether it's x (even index) or y (odd index)
-          const scaledCoord = i % 2 === 0 ? coord * scaleX : coord * scaleY;
-          return i % 2 === 0 ? `${scaledCoord},` : scaledCoord;
-        })
+        .map((coord, i) => (i % 2 === 0 ? `${coord},` : coord))
         .join(" ");
-
       return <polygon points={points} {...shapeProps} />;
     }
-
     return null;
   };
 
@@ -167,63 +134,67 @@ export const PreviewRoom: React.FC<PreviewRoomProps> = ({
         <h3>Interactive Preview</h3>
         <p>Hover over areas to see tooltips, click to view details</p>
       </div>
-
-      <div className="preview-image-container">
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          maxWidth: "100%",
+          aspectRatio: `${naturalSize.width} / ${naturalSize.height}`,
+          background: "#222",
+        }}
+      >
         <img
           ref={imageRef}
           src={imageSrc}
           alt="Room Preview"
           className="preview-image"
+          style={{
+            display: "block",
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            pointerEvents: "none",
+            userSelect: "none",
+          }}
         />
-
-        {/* SVG overlay for interactive areas */}
-        {dimensions.width > 0 && (
+        {imageLoaded && renderedSize.width > 0 && renderedSize.height > 0 && (
           <svg
             ref={svgRef}
-            width={dimensions.width}
-            height={dimensions.height}
-            viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
             className="preview-svg"
-            preserveAspectRatio="xMidYMid slice"
+            width={renderedSize.width}
+            height={renderedSize.height}
+            viewBox={`0 0 ${naturalSize.width} ${naturalSize.height}`}
+            preserveAspectRatio="xMidYMid meet"
             style={{
               position: "absolute",
               top: 0,
               left: 0,
+              width: "100%",
+              height: "100%",
               pointerEvents: "none",
+              zIndex: 2,
             }}
           >
             {areas.map(renderShape)}
-
             {/* Tooltips */}
-            {hoveredAreaId && imageRef.current && (
+            {hoveredAreaId && (
               <g>
                 {areas
                   .filter((area) => area.id === hoveredAreaId && area.tooltip)
                   .map((area) => {
-                    // Calculate scaling factors
-                    const displayWidth = dimensions.width;
-                    const displayHeight = dimensions.height;
-                    const naturalWidth = imageRef.current!.naturalWidth;
-                    const naturalHeight = imageRef.current!.naturalHeight;
-
-                    const scaleX = displayWidth / naturalWidth;
-                    const scaleY = displayHeight / naturalHeight;
-
                     let tooltipX, tooltipY;
                     if (area.shape === "rect") {
                       const [x, y, width] = area.coords;
-                      tooltipX = (x + width / 2) * scaleX;
-                      tooltipY = y * scaleY - 10;
+                      tooltipX = x + width / 2;
+                      tooltipY = y - 10;
                     } else if (area.shape === "circle") {
                       const [cx, cy, r] = area.coords;
-                      tooltipX = cx * scaleX;
-                      tooltipY = (cy - r) * scaleY - 10;
+                      tooltipX = cx;
+                      tooltipY = cy - r - 10;
                     } else {
-                      // For polygons, use first point
-                      tooltipX = area.coords[0] * scaleX;
-                      tooltipY = area.coords[1] * scaleY - 10;
+                      tooltipX = area.coords[0];
+                      tooltipY = area.coords[1] - 10;
                     }
-
                     return (
                       <g key={`tooltip-${area.id}`}>
                         <rect

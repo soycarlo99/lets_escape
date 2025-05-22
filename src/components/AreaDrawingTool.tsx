@@ -31,23 +31,26 @@ export const AreaDrawingTool: React.FC<AreaDrawingToolProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // State for image offset and size
+  const [imgRect, setImgRect] = useState({ left: 0, top: 0, width: 0, height: 0 });
+
   // Set up drawing canvas
   useEffect(() => {
     const updateCanvasSize = () => {
       if (imageRef.current && canvasRef.current && containerRef.current) {
-        // Get the display size of the image
         const rect = imageRef.current.getBoundingClientRect();
-
+        setImgRect({ left: rect.left, top: rect.top, width: rect.width, height: rect.height });
         // Make the canvas match the displayed image size exactly
         canvasRef.current.width = rect.width;
         canvasRef.current.height = rect.height;
-
         // Set the CSS size to match the display size
         canvasRef.current.style.width = `${rect.width}px`;
         canvasRef.current.style.height = `${rect.height}px`;
+        // Position the canvas absolutely at the image's offset
+        canvasRef.current.style.left = `${imageRef.current.offsetLeft}px`;
+        canvasRef.current.style.top = `${imageRef.current.offsetTop}px`;
       }
     };
-
     // Update on image load
     if (imageRef.current) {
       if (imageRef.current.complete) {
@@ -56,7 +59,6 @@ export const AreaDrawingTool: React.FC<AreaDrawingToolProps> = ({
         imageRef.current.onload = updateCanvasSize;
       }
     }
-
     // Update on window resize
     window.addEventListener("resize", updateCanvasSize);
     return () => window.removeEventListener("resize", updateCanvasSize);
@@ -229,17 +231,16 @@ export const AreaDrawingTool: React.FC<AreaDrawingToolProps> = ({
   // Handle mouse down to start drawing
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current || !imageRef.current) return;
-
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-
-    // Get the mouse position relative to the canvas
+    // Get the mouse position relative to the image, not just the canvas
+    const rect = imageRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+    // Only allow drawing within the image bounds
+    if (x < 0 || y < 0 || x > rect.width || y > rect.height) return;
 
     // Calculate scale factors
-    const displayWidth = canvas.width;
-    const displayHeight = canvas.height;
+    const displayWidth = canvasRef.current.width;
+    const displayHeight = canvasRef.current.height;
     const naturalWidth = imageRef.current.naturalWidth;
     const naturalHeight = imageRef.current.naturalHeight;
 
@@ -292,15 +293,10 @@ export const AreaDrawingTool: React.FC<AreaDrawingToolProps> = ({
 
   // Handle mouse move during drawing
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current) return;
-
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-
-    // Get the mouse position relative to the canvas
+    if (!canvasRef.current || !imageRef.current) return;
+    const rect = imageRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-
     if (isDrawing) {
       setEndPoint({ x, y });
     }
@@ -551,14 +547,17 @@ export const AreaDrawingTool: React.FC<AreaDrawingToolProps> = ({
           alt="Room Background"
           className="drawing-image"
           style={{ display: "block", maxWidth: "100%" }}
+          draggable={false}
         />
         <canvas
           ref={canvasRef}
           className="drawing-canvas"
           style={{
             position: "absolute",
-            top: 0,
-            left: 0,
+            top: imageRef.current ? imageRef.current.offsetTop : 0,
+            left: imageRef.current ? imageRef.current.offsetLeft : 0,
+            width: imgRect.width,
+            height: imgRect.height,
             pointerEvents: "all",
             cursor: isDrawingPolygon ? "crosshair" : "default",
           }}
